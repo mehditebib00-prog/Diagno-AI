@@ -17,7 +17,22 @@ const Register = () => {
       localStorage.setItem('user', JSON.stringify(response.data));
       navigate('/dashboard');
     } catch (error) {
-      alert('Registration failed');
+      console.error('Registration error', error);
+
+      const data = error.response?.data;
+      let message = 'Registration failed';
+
+      if (typeof data === 'string') {
+        message = data;
+      } else if (data?.message) {
+        message = data.message;
+      } else if (data && typeof data === 'object') {
+        message = JSON.stringify(data);
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      alert(message);
     }
   };
 
