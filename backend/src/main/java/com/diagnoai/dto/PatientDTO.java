@@ -1,26 +1,27 @@
 package com.diagnoai.dto;
 
+import com.diagnoai.model.Patient;
+
 public class PatientDTO {
 
     private Long id;
     private String name;
     private String email;
-    private String password; // For creation
+    private String password;
+    private String socialSecurity;
+    private String doctorName;
 
     // Constructors
     public PatientDTO() {}
 
-    public PatientDTO(Long id, String name, String email) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-    }
+    
 
-    public PatientDTO(Long id, String name, String email, String password) {
+    public PatientDTO(Long id, String name, String email, String socialSecurity, String doctorName) {
         this.id = id;
         this.name = name;
         this.email = email;
-        this.password = password;
+        this.socialSecurity = socialSecurity;
+        this.doctorName = doctorName;
     }
 
     // Getters and Setters
@@ -35,4 +36,10 @@ public class PatientDTO {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getSocialSecurity() { return socialSecurity; }
+    public void setSocialSecurity(String socialSecurity) { this.socialSecurity = socialSecurity; }
+
+    public String getDoctorName() { return doctorName; }
+    public void setDoctorName(String doctorName) { this.doctorName = doctorName; }
 }

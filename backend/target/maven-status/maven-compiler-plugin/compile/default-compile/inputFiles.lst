@@ -5,7 +5,7 @@ C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\AppointmentController.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\SymptomService.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\PatientDTO.java
-C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\doctor.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Doctor.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Medication.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Patient.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\AuthController.java
@@ -14,6 +14,7 @@ C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Appoi
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\security\JwtAuthenticationFilter.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\RegisterRequest.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\SymptomDTO.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\repository\DoctorRepository.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\AppointmentDTO.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\AuthService.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\security\UserDetailsServiceImpl.java

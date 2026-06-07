@@ -2,21 +2,19 @@ package com.diagnoai.service;
 
 import com.diagnoai.dto.AuthResponse;
 import com.diagnoai.dto.LoginRequest;
-import com.diagnoai.dto.PatientDTO;
 import com.diagnoai.dto.RegisterRequest;
 import com.diagnoai.model.Patient;
+import com.diagnoai.repository.PatientRepository;
 import com.diagnoai.security.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public class AuthService {
 
     @Autowired
-    private PatientService patientService;
+    private PatientRepository patientRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -24,32 +22,53 @@ public class AuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    // =========================
+    // REGISTER
+    // =========================
     public AuthResponse register(RegisterRequest request) {
-        // Check if email already exists
-        if (patientService.findByEmail(request.getEmail()).isPresent()) {
+
+        if (patientRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already in use");
         }
 
-        // Create new patient
-        PatientDTO patientDTO = new PatientDTO(null, request.getName(), request.getEmail(), request.getPassword());
-        PatientDTO savedPatientDTO = patientService.createPatient(patientDTO);
-        Patient savedPatient = patientService.findByEmail(savedPatientDTO.getEmail()).get();
+        Patient patient = new Patient();
+        patient.setName(request.getName());
+        patient.setEmail(request.getEmail());
+        patient.setSocialSecurity(request.getSocialSecurity());
 
-        // Generate JWT token
-        String token = jwtUtils.generateToken(savedPatient.getEmail());
+        patient.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        return new AuthResponse(token, savedPatient.getId(), savedPatient.getEmail(), savedPatient.getName());
+        Patient saved = patientRepository.save(patient);
+
+        String token = jwtUtils.generateToken(saved.getEmail());
+
+        return new AuthResponse(
+                token,
+                saved.getId(),
+                saved.getEmail(),
+                saved.getName()
+        );
     }
 
+    // =========================
+    // LOGIN
+    // =========================
     public AuthResponse login(LoginRequest request) {
-        Optional<Patient> patientOpt = patientService.findByEmail(request.getEmail());
-        if (patientOpt.isPresent()) {
-            Patient patient = patientOpt.get();
-            if (passwordEncoder.matches(request.getPassword(), patient.getPassword())) {
-                String token = jwtUtils.generateToken(patient.getEmail());
-                return new AuthResponse(token, patient.getId(), patient.getEmail(), patient.getName());
-            }
+
+        Patient patient = patientRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(request.getPassword(), patient.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
         }
-        throw new RuntimeException("Invalid credentials");
+
+        String token = jwtUtils.generateToken(patient.getEmail());
+
+        return new AuthResponse(
+                token,
+                patient.getId(),
+                patient.getEmail(),
+                patient.getName()
+        );
     }
 }

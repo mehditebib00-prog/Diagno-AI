@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 export const options = {
   animation: 'fade_from_bottom',
 };
+import { API_URL } from '../../config';
+
 
 export default function RegisterPatient() {
   const router = useRouter();
@@ -34,19 +36,49 @@ export default function RegisterPatient() {
     ]).start();
   }, []);
 
-const handleRegister = () => {
+const handleRegister = async () => {
   if (!name || !email || !password || !socialSecurity) {
     setError('Please fill all fields');
     return;
   }
 
-  setError('');
-  setLoading(true);
+  try {
+    setLoading(true);
+    setError('');
 
-  setTimeout(() => {
-    setLoading(false);
+    const response = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            socialSecurity,
+          }),
+        });
+
+const data = await response.json();
+
+console.log("STATUS:", response.status);
+console.log("DATA:", data);
+
+if (!response.ok) {
+  throw new Error(data.message || 'Registration failed');
+}
+
+
+    console.log('Patient created:', data);
+
     router.replace('/(tabs)/Pdashboard');
-  }, 800);
+
+  } catch (err) {
+    setError('Something went wrong');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
 };
 
   const handleGoogle = () => {
