@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
 
-    // 🔥 meilleure stabilité web + mobile
+    //  meilleure stabilité web + mobile
     ...(Platform.OS === 'web' && {
       maxWidth: 450,
       alignSelf: 'center',

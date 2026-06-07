@@ -2,25 +2,107 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { API_URL } from '../../config';
 
 export default function Schedule() {
   const router = useRouter();
 
-  const [appointments, setAppointments] = useState([
-    { id: '1', name: 'John Doe', time: '10:30 AM', reason: 'Consultation', status: '' },
-    { id: '2', name: 'Sarah Martin', time: '11:15 AM', reason: 'Follow-up', status: '' },
-    { id: '3', name: 'Mark Lee', time: '14:00 PM', reason: 'Check-up', status: '' },
-  ]);
+  type Appointment = {
+  id: string;
+  name: string;
+  time: string;
+  reason: string;
+  status: string;
+};
 
-  const setStatus = (id: string, status: string) => {
+const [appointments, setAppointments] = useState<Appointment[]>([]);
+
+  const fetchAppointments = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/appointments`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) throw new Error('Failed to fetch appointments');
+
+    const data = await res.json();
+    setAppointments(data);
+  } catch (err) {
+    console.log(err);
+  }
+};
+useEffect(() => {
+  fetchAppointments();
+}, []);
+const updateAppointment = async (id: string, updatedData: any) => {
+  try {
+    const res = await fetch(`${API_URL}/api/appointments/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedData),
+    });
+
+    if (!res.ok) throw new Error('Update failed');
+
+    const data = await res.json();
+
+    setAppointments((prev) =>
+      prev.map((item) => (item.id === id ? data : item))
+    );
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const deleteAppointment = async (id: string) => {
+  try {
+    const res = await fetch(`${API_URL}/api/appointments/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) throw new Error('Delete failed');
+
+    setAppointments((prev) =>
+      prev.filter((item) => item.id !== id)
+    );
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+const setStatus = async (id: string, status: string) => {
+  try {
+    const res = await fetch(`${API_URL}/api/appointments/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        // Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) throw new Error('Failed to update');
+
+    const updated = await res.json();
+
     setAppointments((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, status } : item
+        item.id === id ? updated : item
       )
     );
-  };
+  } catch (err) {
+    console.log(err);
+  }
+};
 
-  // ✅ POURCENTAGE DONE
+  //  POURCENTAGE DONE
   const calculateProgress = () => {
     if (appointments.length === 0) return 0;
     const done = appointments.filter((a) => a.status === 'done').length;
@@ -87,6 +169,12 @@ export default function Schedule() {
                 style={[styles.btn, { backgroundColor: '#EF4444' }]}
               >
                 <Text style={styles.btnText}>Rate</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+              onPress={() => deleteAppointment(item.id)}
+              style={[styles.btn, { backgroundColor: '#111827' }]}
+              >
+              <Text style={styles.btnText}>Delete</Text>
               </TouchableOpacity>
 
             </View>

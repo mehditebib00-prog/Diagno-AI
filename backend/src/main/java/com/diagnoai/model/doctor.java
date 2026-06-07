@@ -1,13 +1,24 @@
 package com.diagnoai.model;
+import jakarta.persistence.*;
+import java.util.List;
 
-public class doctor {
+@Entity
+@Table(name = "Doctors")
+public class Doctor {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String name;
     private String specialization;
 
-    // Constructors
-    public doctor() {}
+    @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Patient> patients;
 
-    public doctor(String name, String specialization) {
+    // Constructors
+    public Doctor() {}
+
+    public Doctor(String name, String specialization) {
         this.name = name;
         this.specialization = specialization;
     }

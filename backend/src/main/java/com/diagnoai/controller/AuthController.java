@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:8081")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -29,7 +29,7 @@ public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
 
     } catch (Exception e) {
         System.err.println("REGISTER ERROR:");
-        e.printStackTrace(); // 🔥 THIS IS THE KEY
+        e.printStackTrace();
         return ResponseEntity.status(500).body(e.getMessage());
     }
 }

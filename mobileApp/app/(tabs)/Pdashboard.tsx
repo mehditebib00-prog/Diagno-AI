@@ -15,6 +15,9 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../config';
 
 const { width, height } = Dimensions.get('window');
 const isTabletOrDesktop = width >= 768;
@@ -28,6 +31,15 @@ export default function PatientDashboard() {
   const [tab, setTab] = useState<TabType>('home');
   const [photo, setPhoto] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+  const loadToken = async () => {
+    const savedToken = await AsyncStorage.getItem("token");
+    setToken(savedToken);
+  };
+
+  loadToken();
+}, []);
 
  const [profile, setProfile] = useState({
   id: '123456',
@@ -52,10 +64,7 @@ export default function PatientDashboard() {
     status: '',
   },
 ]);
-const [symptoms, setSymptoms] = useState([
-  { id: '1', name: 'Headache' },
-  { id: '2', name: 'Fatigue' },
-]);
+
 const commonSymptoms = [
   "Headache",
   "Fever",
@@ -133,11 +142,29 @@ const commonSymptoms = [
   "Brittle nails",
   "Sensitivity to light"
 ];
-const [filteredSymptoms, setFilteredSymptoms] = useState<string[]>([]);
+  const [symptoms, setSymptoms] = useState<any[]>([]);
+  const [newSymptom, setNewSymptom] = useState('');
+  const [filteredSymptoms, setFilteredSymptoms] = useState<string[]>([]);
+  const [showSymptomForm, setShowSymptomForm] = useState(false);
+  const [deleteSymptomMode, setDeleteSymptomMode] = useState(false);
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
-const [showSymptomForm, setShowSymptomForm] = useState(false);
-const [deleteSymptomMode, setDeleteSymptomMode] = useState(false);
-const [showAppointmentForm, setShowAppointmentForm] = useState(false);
+  const fetchSymptoms = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/symptoms`);
+
+    if (!res.ok) throw new Error('Failed to load symptoms');
+
+    const data = await res.json();
+    setSymptoms(data);
+  } catch (err) {
+    console.log(err);
+    Alert.alert('Error', 'Could not load symptoms');
+  }
+};
+useEffect(() => {
+  fetchSymptoms();
+}, []);
 
 const [appointment, setAppointment] = useState({
   name: '',
@@ -158,35 +185,66 @@ const handleAppointmentSubmit = () => {
 };
 
 
-const [newSymptom, setNewSymptom] = useState('');
-const addSymptom = () => {
-  if (!newSymptom.trim()) return;
+  const addSymptom = async () => {
+    const value = newSymptom.trim();
 
-  const exists = symptoms.some(
-    (s) =>
-      s.name.toLowerCase().trim() === newSymptom.trim().toLowerCase()
-  );
+    if (!value) return;
 
-  if (exists) {
-    Alert.alert("Error", "This symptom already exists");
-    return;
+    // prevent duplicates locally
+    const exists = symptoms.some(
+      (s) => s.name.toLowerCase() === value.toLowerCase()
+    );
+
+    if (exists) {
+      Alert.alert("Error", "This symptom already exists");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/symptoms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: value }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save symptom");
+      }
+
+      const saved = await res.json();
+
+      setSymptoms((prev) => [...prev, saved]);
+      setNewSymptom('');
+      setFilteredSymptoms([]);
+      setShowSymptomForm(false);
+
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", "Could not save symptom");
+    }
+  };
+
+  const deleteSymptom = async (id: string) => {
+  try {
+    await fetch(`${API_URL}/api/symptoms/${id}`, {
+      method: 'DELETE',
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    });
+
+    setSymptoms((prev) => prev.filter((s) => s.id !== id));
+  } catch (err) {
+    Alert.alert('Error', 'Could not delete symptom');
   }
-
-  setSymptoms((prev) => [
-    ...prev,
-    {
-      id: Date.now().toString(),
-      name: newSymptom.trim(),
-    },
-  ]);
-
-  setNewSymptom('');
-  setShowSymptomForm(false);
 };
 
-const deleteSymptom = (id: string) => {
-  setSymptoms((prev) => prev.filter((s) => s.id !== id));
-};
+
+
+
 const calculateProgress = () => {
   if (meds.length === 0) return 0;
 

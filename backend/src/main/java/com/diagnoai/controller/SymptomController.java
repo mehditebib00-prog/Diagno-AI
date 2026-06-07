@@ -4,6 +4,7 @@ import com.diagnoai.dto.SymptomDTO;
 import com.diagnoai.service.SymptomService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class SymptomController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+    @PreAuthorize("hasRole('PATIENT')")
 
     @PostMapping
     public ResponseEntity<SymptomDTO> createSymptom(@RequestBody SymptomDTO symptomDTO) {
@@ -38,6 +40,7 @@ public class SymptomController {
         return ResponseEntity.ok(createdSymptom);
     }
 
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<SymptomDTO> updateSymptom(@PathVariable Long id, @RequestBody SymptomDTO symptomDTO) {
         return symptomService.updateSymptom(id, symptomDTO)
@@ -45,6 +48,7 @@ public class SymptomController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasRole('PATIENT')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSymptom(@PathVariable Long id) {
         if (symptomService.deleteSymptom(id)) {

@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Animated } from 'r
 import { useRouter } from 'expo-router';
 import { useRef, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { API_URL } from '../../config';
 
 export default function PatientLogin() {
   const router = useRouter();
@@ -29,21 +30,53 @@ export default function PatientLogin() {
     ]).start();
   }, []);
 
-  const handleLogin = () => {
-    if (!patientId || !password) {
-      setError('Please fill all fields');
-      return;
+
+
+   const handleLogin = async () => {
+  if (!patientId || !password) {
+    setError('Please fill all fields');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError('');
+
+    const response = await fetch(
+      `${API_URL}/api/auth/login`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: patientId,
+          password,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("STATUS:", response.status);
+    console.log("DATA:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Login failed');
     }
 
-    setError('');
-    setLoading(true);
+    // save token later if needed
+    console.log("TOKEN:", data.token);
 
-    setTimeout(() => {
-      setLoading(false);
+    router.replace('/(tabs)/Pdashboard');
 
-      // 🔥 REDIRECTION VERS DASHBOARD PATIENT
-      router.replace('/(tabs)/Pdashboard');
-    }, 800);
+  } catch (err: any) {
+    setError(err.message || 'Unable to connect to server');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+;
   };
 
   const handleGoogle = () => {
