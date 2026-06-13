@@ -1,20 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Alert } from 'react-native';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  Image,
-  ScrollView,
-  TextInput,
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Animated,
+    Dimensions,
+    Image,
+    ScrollView,
+    TextInput,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+const API_URL = 'http://172.20.10.3:8085';
 
 const { width, height } = Dimensions.get('window');
 const isTabletOrDesktop = width >= 768;
@@ -22,1168 +26,653 @@ const isTabletOrDesktop = width >= 768;
 const tabs = ['home', 'meds', 'symptoms', 'account'] as const;
 type TabType = typeof tabs[number];
 
-export default function PatientDashboard() {
-  const router = useRouter();
-
-  const [tab, setTab] = useState<TabType>('home');
-  const [photo, setPhoto] = useState<string | null>(null);
- 
-
-const [profile, setProfile] = useState({
-  fullName: 'John Doe',
-  specialty: 'Cardiologist',
-  hospital: 'Paris Hospital',
-  phone: '+33 6 12 34 56 78',
-});
-  const [meds, setMeds] = useState([
-  {
-    id: '1',
-    name: 'Paracetamol',
-    dosage: '500mg',
-    frequency: 'Morning',
-    status: '',
-  },
-  {
-    id: '2',
-    name: 'Vitamin D',
-    dosage: '1000UI',
-    frequency: 'Afternoon',
-    status: '',
-  },
-]);
-const [symptoms, setSymptoms] = useState([
-  { id: '1', name: 'Headache' },
-  { id: '2', name: 'Fatigue' },
-]);
-const commonSymptoms = [
-  "Headache",
-  "Fever",
-  "Cough",
-  "Fatigue",
-  "Sore throat",
-  "Nausea",
-  "Dizziness",
-  "Chest pain",
-  "Shortness of breath",
-  "Back pain",
-  "Stomach ache",
-  "Diarrhea",
-  "Constipation",
-  "Runny nose",
-  "Body pain",
-  "Chills",
-  "Loss of appetite",
-  "Vomiting",
-  "Insomnia",
-  "Anxiety",
-  "Depression",
-  "Skin rash",
-  "Itching",
-  "Muscle cramps",
-  "Joint pain",
-  "Blurred vision",
-  "Double vision",
-  "Eye pain",
-  "Ear pain",
-  "Hearing loss",
-  "Ringing in ears",
-  "Nasal congestion",
-  "Sneezing",
-  "Dry mouth",
-  "Bleeding gums",
-  "Swollen glands",
-  "Palpitations",
-  "Rapid heartbeat",
-  "Slow heartbeat",
-  "High blood pressure",
-  "Low blood pressure",
-  "Cold hands and feet",
-  "Excessive sweating",
-  "Night sweats",
-  "Hot flashes",
-  "Weight loss",
-  "Weight gain",
-  "Dehydration",
-  "Frequent urination",
-  "Painful urination",
-  "Blood in urine",
-  "Dark urine",
-  "Swelling",
-  "Leg pain",
-  "Arm pain",
-  "Neck pain",
-  "Shoulder pain",
-  "Hip pain",
-  "Knee pain",
-  "Foot pain",
-  "Weakness",
-  "Numbness",
-  "Tingling",
-  "Balance problems",
-  "Memory loss",
-  "Confusion",
-  "Difficulty concentrating",
-  "Mood swings",
-  "Irritability",
-  "Panic attacks",
-  "Short-term memory issues",
-  "Dry skin",
-  "Hair loss",
-  "Brittle nails",
-  "Sensitivity to light"
-];
-const [symptomPatient, setSymptomPatient] = useState<Patient | null>(null);
-const [showSymptoms, setShowSymptoms] = useState(false);
-const [symptomType, setSymptomType] = useState<'new' | 'old'>('new');
-
-const [showSymptomForm, setShowSymptomForm] = useState(false);
-
-const [showAppointmentForm, setShowAppointmentForm] = useState(false);
-
-const [appointment, setAppointment] = useState({
-  name: '',
-  date: '',
-  time: '',
-  doctor: '',
-});
-const resetSymptomsPage = () => {
-  setSearchName('');
-  setSearchId('');
-  setSymptomPatient(null);
-  setShowSymptoms(false);
-  setSymptomType('new');
-};
-const handleAppointmentSubmit = () => {
-  if (!appointment.name || !appointment.date || !appointment.time) return;
-
-  Alert.alert(
-    "Appointment booked",
-    `Name: ${appointment.name}\nDate: ${appointment.date}\nTime: ${appointment.time}`
-  );
-
-  setShowAppointmentForm(false);
-  setAppointment({ name: '', date: '', time: '', doctor: '' });
-};
-
-
-const [newSymptom, setNewSymptom] = useState('');
-const addSymptom = () => {
-  if (!newSymptom.trim()) return;
-
-  const exists = symptoms.some(
-    (s) =>
-      s.name.toLowerCase().trim() === newSymptom.trim().toLowerCase()
-  );
-
-  if (exists) {
-    Alert.alert("Error", "This symptom already exists");
-    return;
-  }
-
-  setSymptoms((prev) => [
-    ...prev,
-    {
-      id: Date.now().toString(),
-      name: newSymptom.trim(),
-    },
-  ]);
-
-  setNewSymptom('');
-  setShowSymptomForm(false);
-};
-
-const deleteSymptom = (id: string) => {
-  setSymptoms((prev) => prev.filter((s) => s.id !== id));
-};
-const calculateProgress = () => {
-  if (meds.length === 0) return 0;
-
-  const taken = meds.filter((m) => m.status === 'taken').length;
-  return Math.round((taken / meds.length) * 100);
-};
-const resetMedsPage = () => {
-  setSearchName('');
-  setSearchId('');
-  setPatient(null);
-  setEditMode(false);
-  setShowAddForm(false);
-
-  setMedName('');
-  setMedDosage('');
-  setMedFrequency('');
-};
 type Patient = {
-  name: string;
-  id: string;
-};
-const [searchName, setSearchName] = useState('');
-const [searchId, setSearchId] = useState('');
-const [patient, setPatient] = useState<Patient | null>(null);
-const [editMode, setEditMode] = useState(false);
-const [newMed, setNewMed] = useState('');
-const [showAddForm, setShowAddForm] = useState(false);
-const [medName, setMedName] = useState('');
-const [medDosage, setMedDosage] = useState('');
-const [medFrequency, setMedFrequency] = useState('');
-const handleSearch = () => {
-  if (!searchName || !searchId) return;
-
-  setPatient({
-    name: searchName,
-    id: searchId,
-  });
+    id: string;
+    name: string;
+    email?: string;
+    socialSecurity?: string;
 };
 
-const handleAddMed = () => {
-  if (!medName || !medDosage || !medFrequency) {
-    Alert.alert("Error", "Please fill all fields");
-    return;
-  }
+interface Symptom {
+    id: number;
+    description: string;
+    date?: string;
+    patientId: number;
+}
 
-  setMeds(prev => [
-    ...prev,
-    {
-      id: Date.now().toString(),
-      name: medName,
-      dosage: medDosage,
-      frequency: medFrequency,
-      status: '',
-    }
-  ]);
+export default function DoctorDashboard() {
+    const router = useRouter();
 
-  // reset
-  setMedName('');
-  setMedDosage('');
-  setMedFrequency('');
-  setShowAddForm(false);
-};
-const deleteMed = (id: string) => {
-  setMeds((prev) => prev.filter((m) => m.id !== id));
-};
+    const [tab, setTab] = useState<TabType>('home');
+    const [photo, setPhoto] = useState<string | null>(null);
 
-
-  const animValues = useRef(
-    tabs.reduce((acc, t) => {
-      acc[t] = new Animated.Value(1);
-      return acc;
-    }, {} as Record<TabType, Animated.Value>)
-  ).current;
-
-  const icons: Record<TabType, keyof typeof Ionicons.glyphMap> = {
-    home: 'home',
-    meds: 'medical',
-    symptoms: 'pulse',
-    account: 'person',
-  };
-
-  const animateTab = (selected: TabType) => {
-    tabs.forEach((t) => {
-      Animated.spring(animValues[t], {
-        toValue: t === selected ? 1.25 : 1,
-        useNativeDriver: true,
-        friction: 6,
-      }).start();
-    });
-  };
-
-  const changeTab = (t: TabType) => {
-    setTab(t);
-    animateTab(t);
-  };
-
-  /* 📸 IMAGE */
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
+    const [profile, setProfile] = useState({
+        fullName: 'Chargement...',
+        specialty: 'Patientez...',
+        hospital: 'Paris Hospital',
+        phone: '+33 6 12 34 56 78',
     });
 
-    if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
-    }
-  };
+    const [searchName, setSearchName] = useState('');
+    const [searchId, setSearchId] = useState('');
+    const [patient, setPatient] = useState<Patient | null>(null);
+    const [patientsList, setPatientsList] = useState<Patient[]>([]);
+    const [symptomPatient, setSymptomPatient] = useState<Patient | null>(null);
 
-const getGreeting = () => {
-  const hour = new Date().getHours();
+    const [meds, setMeds] = useState<{ id: string; name: string; dosage: string; patientId?: number }[]>([]);
+    const [symptoms, setSymptoms] = useState<Symptom[]>([]);
 
-  if (hour >= 5 && hour < 12) return "Good morning 👋";
-  if (hour >= 12 && hour < 18) return "Good afternoon ☀️";
-  return "Good evening 🌙";
-};
-  /* ================= HOME ================= */
-  const renderHome = () => (
-  <ScrollView style={{ padding: 20, paddingTop: 60 }}>
+    const [showSymptoms, setShowSymptoms] = useState(false);
+    const [symptomType, setSymptomType] = useState<'new' | 'old'>('new');
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [editMode, setEditMode] = useState(false);
 
-    {/* TITLE */}
-    <Text style={{ color: 'white', fontSize: 24, fontWeight: '700' }}>
-      {getGreeting()}
-    </Text>
+    const [medName, setMedName] = useState('');
+    const [medDosage, setMedDosage] = useState('');
+    const [medFrequency, setMedFrequency] = useState('');
 
-    <Text style={{ color: '#94A3B8', marginTop: 5 }}>
-      Your clinical dashboard is active
-    </Text>
+    useEffect(() => {
+        const loadDoctorProfile = async () => {
+            try {
+                const savedEmail = await AsyncStorage.getItem('doctorEmail');
 
-    {/* IMAGE */}
-    <View style={{ alignItems: 'center', marginVertical: 20 }}>
-      <Image
-        source={require('../../assets/images/docteur.jpeg')}
-        style={{
-          width: '100%',
-          height: 200,
-          borderRadius: 15,
-        }}
-        resizeMode="cover"
-      />
-    </View>
+                if (!savedEmail) {
+                    setProfile({
+                        fullName: 'Médecin Connected',
+                        specialty: 'Généraliste',
+                        hospital: 'Hôpital Central',
+                        phone: '+33 6 12 34 56 78',
+                    });
+                    return;
+                }
 
-    {/* STATS CARD */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>📊 Today Overview</Text>
-      <Text style={styles.cardText}>
-        👥 Patients today: 12{"\n"}
-        📅 Appointments: 5{"\n"}
-        💊 Prescriptions written: 8{"\n"}
-        ⚠️ Pending follow-ups: 3
-      </Text>
-    </View>
+                console.log("Demande de profil pour le médecin :", savedEmail);
+                const response = await axios.get(`${API_URL}/api/doctors/profile?email=${encodeURIComponent(savedEmail)}`);
 
-    {/* CLINICAL ACTIVITY */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>🏥 Clinical Activity</Text>
+                setProfile({
+                    fullName: response.data.name,
+                    specialty: response.data.specialization || 'Généraliste',
+                    hospital: response.data.hospital || 'Paris Hospital',
+                    phone: response.data.phone || '+33 6 12 34 56 78',
+                });
 
-      <Text style={styles.cardText}>
-        ✔ Review patient symptoms{"\n"}
-        ✔ Monitor ongoing treatments{"\n"}
-        ✔ Validate prescriptions
-      </Text>
-    </View>
+            } catch (err) {
+                console.error("Erreur lors du chargement du profil médecin:", err);
+                setProfile({
+                    fullName: 'Médecin (Mode Hors-ligne)',
+                    specialty: 'Généraliste',
+                    hospital: 'Hôpital Central',
+                    phone: '+33 6 12 34 56 78',
+                });
+            }
+        };
 
-    {/* APPOINTMENTS */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>📅 Today’s Appointments</Text>
+        loadDoctorProfile();
+    }, []);
 
-      <Text style={styles.cardText}>
-        “Doctor,remember to review your appointments regularly to ensure timely follow-ups and optimal patient care.”
-      </Text>
+    const handleSearch = async (showAll = false) => {
+        if (!showAll && !searchName.trim() && !searchId.trim()) {
+            Alert.alert("Erreur", "Veuillez entrer un Nom OU un ID pour lancer la recherche.");
+            return;
+        }
 
-      <TouchableOpacity
-        onPress={() => router.push('/(tabs)/MAppointment')}
-        style={{
-          marginTop: 10,
-          backgroundColor: '#38BDF8',
-          padding: 10,
-          borderRadius: 10,
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: 'white' }}>View Schedule</Text>
-      </TouchableOpacity>
-    </View>
+        try {
+            let url = `${API_URL}/api/patients/search`;
 
-  </ScrollView>
-);
+            if (!showAll) {
+                const queryParams = [];
+                if (searchId.trim()) queryParams.push(`id=${searchId.trim()}`);
+                if (searchName.trim()) queryParams.push(`name=${encodeURIComponent(searchName.trim())}`);
+                url += `?${queryParams.join('&')}`;
+            }
 
-  /* ================= ACCOUNT ================= */
- const renderAccount = () => (
-  <ScrollView
-    style={styles.accountContainer}
-    showsVerticalScrollIndicator={false}
-    contentContainerStyle={{ paddingBottom: 120 }}
-  >
+            console.log("Appel API recherche :", url);
+            const response = await axios.get(url);
 
-    {/* PHOTO */}
-    <TouchableOpacity onPress={pickImage} style={styles.profileBox}>
-      <View style={styles.avatar}>
-        {photo ? (
-          <Image source={{ uri: photo }} style={styles.avatarImg} />
-        ) : (
-          <Ionicons name="camera" size={28} color="#0B1220" />
-        )}
-      </View>
-      <Text style={styles.changePhoto}>Tap to change photo</Text>
-    </TouchableOpacity>
+            setPatientsList(response.data);
 
-    {/* FULL NAME */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>👤 Full Name</Text>
-      {editMode ? (
-        <TextInput
-          value={profile?.fullName || ''}
-          onChangeText={(t) =>
-            setProfile({ ...profile, fullName: t })
-          }
-          style={styles.input}
-        />
-      ) : (
-        <Text style={styles.cardText}>
-          {profile?.fullName || 'No name set'}
-        </Text>
-      )}
-    </View>
+            if (response.data.length === 1) {
+                const selectedPatient = response.data[0];
+                setPatient(selectedPatient);
+                setSymptomPatient(selectedPatient);
 
-    {/* SPECIALTY */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>🩺 Specialty</Text>
-      {editMode ? (
-        <TextInput
-          value={profile?.specialty || ''}
-          onChangeText={(t) =>
-            setProfile({ ...profile, specialty: t })
-          }
-          style={styles.input}
-        />
-      ) : (
-        <Text style={styles.cardText}>
-          {profile?.specialty || 'No specialty set'}
-        </Text>
-      )}
-    </View>
+                const medsRes = await axios.get(`${API_URL}/api/medications/mobile/patient/${selectedPatient.id}`);
+                setMeds(medsRes.data);
 
-    {/* HOSPITAL / CLINIC */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>🏥 Hospital / Clinic</Text>
-      {editMode ? (
-        <TextInput
-          value={profile?.hospital || ''}
-          onChangeText={(t) =>
-            setProfile({ ...profile, hospital: t })
-          }
-          style={styles.input}
-        />
-      ) : (
-        <Text style={styles.cardText}>
-          {profile?.hospital || 'No hospital set'}
-        </Text>
-      )}
-    </View>
+                const symptomsRes = await axios.get(`${API_URL}/api/symptoms/mobile/patient/${selectedPatient.id}`);
+                setSymptoms(symptomsRes.data);
+            } else {
+                setPatient(null);
+                setSymptomPatient(null);
+                setMeds([]);
+                setSymptoms([]);
+            }
 
-    {/* PHONE */}
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>📞 Phone</Text>
-      {editMode ? (
-        <TextInput
-          value={profile?.phone || ''}
-          onChangeText={(t) =>
-            setProfile({ ...profile, phone: t })
-          }
-          style={styles.input}
-        />
-      ) : (
-        <Text style={styles.cardText}>
-          {profile?.phone || 'No phone set'}
-        </Text>
-      )}
-    </View>
+        } catch (err: any) {
+            console.error("Erreur recherche:", err);
+            setPatientsList([]);
+            setPatient(null);
+            setSymptomPatient(null);
+            setMeds([]);
+            setSymptoms([]);
+            if (err.response && err.response.status === 404) {
+                Alert.alert("Aucun résultat", "Aucun patient trouvé avec ces critères.");
+            } else {
+                Alert.alert("Erreur", "Impossible de se connecter au serveur.");
+            }
+        }
+    };
 
-    {/* EDIT BUTTON */}
-    <TouchableOpacity
-      style={styles.editBtn}
-      onPress={() => setEditMode(!editMode)}
-    >
-      <Text style={styles.editText}>
-        {editMode ? 'Save Changes' : 'Edit Information'}
-      </Text>
-    </TouchableOpacity>
+    const handleAddMed = async () => {
+        if (!medName || !medDosage || !medFrequency) {
+            Alert.alert("Erreur", "Veuillez remplir tous les champs du formulaire.");
+            return;
+        }
+        if (!patient) return;
 
-    {/* LOGOUT */}
-    <TouchableOpacity
-      style={styles.logoutBtn}
-      onPress={() => router.replace('/(tabs)/role')}
-    >
-      <Ionicons name="log-out-outline" size={18} color="white" />
-      <Text style={styles.logoutText}>Log out</Text>
-    </TouchableOpacity>
+        try {
+            console.log("Envoi du nouveau médicament en BDD pour le patient ID:", patient.id);
 
-  </ScrollView>
-);
-const renderMeds = () => {
-  return (
-    <View style={styles.medsContainer}>
+            const response = await axios.post(`${API_URL}/api/medications/mobile/add`, {
+                name: medName,
+                dosage: `${medDosage} (${medFrequency})`,
+                patientId: parseInt(patient.id)
+            });
 
-      {/* HEADER */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            setMeds(prev => [...prev, response.data]);
 
-  <View>
-    <Text style={styles.homeTitle}>💊 Medications</Text>
-    <Text style={styles.homeSub}>Manage patient prescriptions easily</Text>
-  </View>
+            setMedName('');
+            setMedDosage('');
+            setMedFrequency('');
+            setShowAddForm(false);
+            Alert.alert("Succès", "Le médicament a bien été enregistré !");
 
-  <TouchableOpacity onPress={resetMedsPage} style={styles.resetBtn}>
-    <Ionicons name="refresh" size={20} color="white" />
-  </TouchableOpacity>
+        } catch (err) {
+            console.error("Erreur ajout médicament:", err);
+            Alert.alert("Erreur", "Impossible d'enregistrer la prescription.");
+        }
+    };
 
-</View>
+    const deleteMed = async (id: string) => {
+        try {
+            console.log("Suppression en cours du médicament ID:", id);
+            await axios.delete(`${API_URL}/api/medications/mobile/delete/${id}`);
 
-      {/* SEARCH BOX */}
-      <View style={styles.searchBox}>
-        <Ionicons name="person-outline" size={18} color="#94A3B8" />
-        <TextInput
-          placeholder="Patient name"
-          placeholderTextColor="#94A3B8"
-          value={searchName}
-          onChangeText={setSearchName}
-          style={styles.searchInput}
-        />
-      </View>
+            setMeds((prev) => prev.filter((m) => m.id !== id));
+            Alert.alert("Supprimé", "Le médicament a été retiré avec succès de la base de données.");
+        } catch (err) {
+            console.error("Erreur suppression médicament:", err);
+            Alert.alert("Erreur", "Impossible de supprimer la prescription.");
+        }
+    };
 
-      <View style={styles.searchBox}>
-        <Ionicons name="id-card-outline" size={18} color="#94A3B8" />
-        <TextInput
-          placeholder="Patient ID"
-          placeholderTextColor="#94A3B8"
-          value={searchId}
-          onChangeText={setSearchId}
-          style={styles.searchInput}
-        />
-      </View>
+    const resetMedsPage = () => {
+        setSearchName('');
+        setSearchId('');
+        setPatient(null);
+        setPatientsList([]);
+        setMeds([]);
+        setEditMode(false);
+        setShowAddForm(false);
+        setMedName('');
+        setMedDosage('');
+        setMedFrequency('');
+    };
 
-      <TouchableOpacity onPress={handleSearch} style={styles.searchBtn}>
-        <Text style={{ color: 'white', fontWeight: '600' }}>Search</Text>
-      </TouchableOpacity>
+    const resetSymptomsPage = () => {
+        setSearchName('');
+        setSearchId('');
+        setSymptomPatient(null);
+        setPatientsList([]);
+        setSymptoms([]);
+        setShowSymptoms(false);
+        setSymptomType('new');
+    };
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 200 }}>
+    const animValues = useRef(
+        tabs.reduce((acc, t) => {
+            acc[t] = new Animated.Value(1);
+            return acc;
+        }, {} as Record<TabType, Animated.Value>)
+    ).current;
 
-        {/* PATIENT CARD */}
-        {patient && (
-          <View style={styles.patientCard}>
+    const icons: Record<TabType, keyof typeof Ionicons.glyphMap> = {
+        home: 'home',
+        meds: 'medical',
+        symptoms: 'pulse',
+        account: 'person',
+    };
 
-            <View>
-              <Text style={styles.patientName}>{patient.name}</Text>
-              <Text style={styles.patientId}>ID: {patient.id}</Text>
+    const changeTab = (t: TabType) => {
+        setTab(t);
+        Animated.spring(animValues[t], {
+            toValue: 1.25,
+            useNativeDriver: true,
+            friction: 6,
+        }).start(() => {
+            tabs.forEach((tabItem) => {
+                if (tabItem !== t) animValues[tabItem].setValue(1);
+            });
+        });
+    };
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+        });
+        if (!result.canceled) setPhoto(result.assets[0].uri);
+    };
+
+    /* ================= HOME ================= */
+    const renderHome = () => (
+        <ScrollView style={{ padding: 20, paddingTop: 60 }} showsVerticalScrollIndicator={false}>
+            <Text style={{ color: 'white', fontSize: 24, fontWeight: '700' }}>Good day 👋</Text>
+            <Text style={{ color: '#94A3B8', marginTop: 5 }}>Welcome back, Dr. {profile.fullName}</Text>
+
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                <Image
+                    source={require('../../assets/images/docteur.jpeg')}
+                    style={{ width: '100%', height: 200, borderRadius: 15 }}
+                    resizeMode="cover"
+                />
             </View>
 
+            {/* 📅 BOUTON AJOUTÉ POUR OUVRIR LE PLANNING SANS TOUCHER AU DESIGN */}
             <TouchableOpacity
-              onPress={() => setEditMode(!editMode)}
-              style={styles.editSmallBtn}
+                style={styles.planningLinkBtn}
+                onPress={() => router.push('/MAppointment')}
             >
-              <Ionicons name="create-outline" size={16} color="white" />
+                <Ionicons name="calendar" size={20} color="white" />
+                <Text style={styles.planningLinkText}>Gérer mon Planning / RDV</Text>
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.6)" />
             </TouchableOpacity>
 
-          </View>
-        )}
-
-        {/* MED LIST */}
-        {editMode && meds.map((med) => (
-          <View key={med.id} style={styles.medCard}>
-
-            <View style={styles.medIcon}>
-              <Ionicons name="medkit" size={20} color="#38BDF8" />
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>📊 Today Overview</Text>
+                <Text style={styles.cardText}>👥 Patients today: 12{"\n"}📅 Appointments: 5</Text>
             </View>
 
-            <View style={{ flex: 1 }}>
-              <Text style={styles.medName}>{med.name}</Text>
-              <Text style={styles.medInfo}>
-                {med.dosage} • {med.frequency}
-              </Text>
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>🏥 Clinical Activity</Text>
+                <Text style={styles.cardText}>✔ Review patient symptoms{"\n"}✔ Monitor ongoing treatments</Text>
             </View>
-
-            <TouchableOpacity
-              onPress={() => deleteMed(med.id)}
-              style={styles.deleteBtn}
-            >
-              <Ionicons name="trash-outline" size={18} color="white" />
-            </TouchableOpacity>
-
-          </View>
-        ))}
-
-      </ScrollView>
-
-      {/* ADD MED FLOAT */}
-      {editMode && (
-        <View style={styles.addContainer}>
-
-       
-
-          <TouchableOpacity onPress={() => setShowAddForm(true)} style={styles.addBtn}>
-            <Ionicons name="add" size={24} color="white" />
-          </TouchableOpacity>
-        
-
-        </View>
-      )}
-      {showAddForm && (
-  <View style={styles.modal}>
-
-    <View style={styles.formCard}>
-      <Text style={styles.formTitle}>➕</Text>
-
-      <TextInput
-        placeholder="Name"
-        placeholderTextColor="#94A3B8"
-        value={medName}
-        onChangeText={setMedName}
-        style={styles.input}
-      />
-
-      <TextInput
-        placeholder="Dosage (ex: 500mg)"
-        placeholderTextColor="#94A3B8"
-        value={medDosage}
-        onChangeText={setMedDosage}
-        style={styles.input}
-      />
-
-      <TextInput
-        placeholder="Frequency (ex: Morning)"
-        placeholderTextColor="#94A3B8"
-        value={medFrequency}
-        onChangeText={setMedFrequency}
-        style={styles.input}
-      />
-
-      <View style={{ flexDirection: 'row', marginTop: 15 }}>
-
-        <TouchableOpacity
-          onPress={() => setShowAddForm(false)}
-          style={styles.cancelBtn}
-        >
-          <Text style={{ color: 'white' }}>Cancel</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleAddMed}
-          style={styles.saveBtn}
-        >
-          <Text style={{ color: 'white' }}>Add</Text>
-        </TouchableOpacity>
-
-      </View>
-    </View>
-
-  </View>
-)}
-
-    </View>
-  );
-};
-const renderSymptoms = () => {
-  return (
-    <View style={styles.medsContainer}>
-
-      {/* HEADER */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-
-  <View>
-    <Text style={styles.homeTitle}>🤒 Symptoms</Text>
-    <Text style={styles.homeSub}>Search patient symptoms history</Text>
-  </View>
-
-  <TouchableOpacity onPress={resetSymptomsPage} style={styles.resetBtn}>
-    <Ionicons name="refresh" size={20} color="white" />
-  </TouchableOpacity>
-
-</View>
-      {/* SEARCH */}
-      <View style={styles.searchBox}>
-        <Ionicons name="person-outline" size={18} color="#94A3B8" />
-        <TextInput
-          placeholder="Patient name"
-          placeholderTextColor="#94A3B8"
-          value={searchName}
-          onChangeText={setSearchName}
-          style={styles.searchInput}
-        />
-      </View>
-
-      <View style={styles.searchBox}>
-        <Ionicons name="id-card-outline" size={18} color="#94A3B8" />
-        <TextInput
-          placeholder="Patient ID"
-          placeholderTextColor="#94A3B8"
-          value={searchId}
-          onChangeText={setSearchId}
-          style={styles.searchInput}
-        />
-      </View>
-
-      <TouchableOpacity
-        onPress={() => {
-          if (!searchName || !searchId) return;
-
-          setSymptomPatient({
-            name: searchName,
-            id: searchId,
-          });
-        }}
-        style={styles.searchBtn}
-      >
-        <Text style={{ color: 'white', fontWeight: '600' }}>Search</Text>
-      </TouchableOpacity>
-
-      {/* PATIENT CARD */}
-      {symptomPatient && (
-        <View style={styles.patientCard}>
-
-          <View>
-            <Text style={styles.patientName}>{symptomPatient.name}</Text>
-            <Text style={styles.patientId}>ID: {symptomPatient.id}</Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => setShowSymptoms(true)}
-            style={{
-              backgroundColor: '#38BDF8',
-              padding: 8,
-              borderRadius: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <Ionicons name="eye-outline" size={16} color="white" />
-            <Text style={{ color: 'white', fontSize: 12 }}>View</Text>
-          </TouchableOpacity>
-
-        </View>
-      )}
-
-      {/* TYPE SWITCH */}
-      {showSymptoms && (
-        <View style={{ flexDirection: 'row', marginBottom: 15 }}>
-
-          <TouchableOpacity
-            onPress={() => setSymptomType('new')}
-            style={[
-              styles.typeBtn,
-              symptomType === 'new' && styles.typeBtnActive
-            ]}
-          >
-            <Text style={{ color: 'white' }}>New</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setSymptomType('old')}
-            style={[
-              styles.typeBtn,
-              symptomType === 'old' && styles.typeBtnActive
-            ]}
-          >
-            <Text style={{ color: 'white' }}>Old</Text>
-          </TouchableOpacity>
-
-        </View>
-      )}
-
-      {/* SYMPTOMS LIST */}
-      {showSymptoms && (
-        <ScrollView contentContainerStyle={{ paddingBottom: 200 }}>
-
-          {symptoms.map((s) => (
-            <View key={s.id} style={styles.medCard}>
-
-              <View style={styles.medIcon}>
-                <Ionicons name="alert-circle-outline" size={20} color="#EF4444" />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.medName}>{s.name}</Text>
-              </View>
-
-              <View style={{
-                backgroundColor: symptomType === 'new' ? '#38BDF8' : '#64748B',
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 10,
-              }}>
-                <Text style={{ color: 'white', fontSize: 11 }}>
-                  {symptomType.toUpperCase()}
-                </Text>
-              </View>
-
-            </View>
-          ))}
-
         </ScrollView>
-      )}
+    );
 
-    </View>
-  );
-};
-  const renderContent = () => {
-    if (tab === 'home') return renderHome();
-    if (tab === 'account') return renderAccount();
-    if (tab === 'meds') return renderMeds();
-    if (tab === 'symptoms') return renderSymptoms();
+    /* ================= ACCOUNT ================= */
+    const renderAccount = () => (
+        <ScrollView style={styles.accountContainer} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+            <TouchableOpacity onPress={pickImage} style={styles.profileBox}>
+                <View style={styles.avatar}>
+                    {photo ? <Image source={{ uri: photo }} style={styles.avatarImg} /> : <Ionicons name="camera" size={28} color="#0B1220" />}
+                </View>
+                <Text style={styles.changePhoto}>Tap to change photo</Text>
+            </TouchableOpacity>
+
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>👤 Full Name</Text>
+                {editMode ? <TextInput value={profile.fullName} onChangeText={(t) => setProfile({ ...profile, fullName: t })} style={styles.input} /> : <Text style={styles.cardText}>{profile.fullName}</Text>}
+            </View>
+
+            <View style={styles.card}>
+                <Text style={styles.cardTitle}>🩺 Specialty</Text>
+                {editMode ? <TextInput value={profile.specialty} onChangeText={(t) => setProfile({ ...profile, specialty: t })} style={styles.input} /> : <Text style={styles.cardText}>{profile.specialty}</Text>}
+            </View>
+
+            <TouchableOpacity style={styles.editBtn} onPress={() => setEditMode(!editMode)}>
+                <Text style={styles.editText}>{editMode ? 'Save Changes' : 'Edit Information'}</Text>
+            </TouchableOpacity>
+        </ScrollView>
+    );
+
+    /* ================= MEDS ================= */
+    const renderMeds = () => (
+        <View style={styles.medsContainer}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.homeTitle}>💊 Medications</Text>
+                    <Text style={styles.homeSub}>Manage patient prescriptions easily</Text>
+                </View>
+                <TouchableOpacity onPress={resetMedsPage} style={styles.resetBtn}>
+                    <Ionicons name="refresh" size={20} color="white" />
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchBox}>
+                <Ionicons name="person-outline" size={18} color="#94A3B8" />
+                <TextInput placeholder="Patient name (Optional)" placeholderTextColor="#94A3B8" value={searchName} onChangeText={setSearchName} style={styles.searchInput} />
+            </View>
+
+            <View style={styles.searchBox}>
+                <Ionicons name="id-card-outline" size={18} color="#94A3B8" />
+                <TextInput placeholder="Patient ID (Optional)" placeholderTextColor="#94A3B8" value={searchId} onChangeText={searchId => setSearchId(searchId)} style={styles.searchInput} keyboardType="numeric" />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                <TouchableOpacity onPress={() => handleSearch(false)} style={[styles.searchBtn, { flex: 1, marginBottom: 0 }]}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>Search</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleSearch(true)} style={[styles.searchBtn, { flex: 1, marginBottom: 0, backgroundColor: '#0EA5E9' }]}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>Show All Patients</Text>
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
+                {patientsList.length > 0 && !patient && (
+                    <Text style={{ color: '#94A3B8', fontSize: 13, marginBottom: 10, fontWeight: '600' }}>
+                        Patients found ({patientsList.length}) : Tap one to select
+                    </Text>
+                )}
+
+                {!patient && patientsList.map((p) => (
+                    <TouchableOpacity
+                        key={p.id}
+                        onPress={async () => {
+                            setPatient(p);
+                            setSymptomPatient(p);
+                            try {
+                                console.log("Chargement des médicaments pour le patient sélectionné:", p.id);
+                                const medsRes = await axios.get(`${API_URL}/api/medications/mobile/patient/${p.id}`);
+                                setMeds(medsRes.data);
+
+                                const symptomsRes = await axios.get(`${API_URL}/api/symptoms/mobile/patient/${p.id}`);
+                                setSymptoms(symptomsRes.data);
+                            } catch(e) {
+                                console.error("Erreur chargement données liste:", e);
+                            }
+                        }}
+                        style={styles.patientCard}
+                    >
+                        <View>
+                            <Text style={styles.patientName}>{p.name}</Text>
+                            <Text style={styles.patientId}>ID: {p.id}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
+                    </TouchableOpacity>
+                ))}
+
+                {patient && (
+                    <>
+                        <View style={[styles.patientCard, { backgroundColor: 'rgba(56,189,248,0.12)', borderColor: '#38BDF8' }]}>
+                            <View>
+                                <Text style={styles.patientName}>{patient.name}</Text>
+                                <Text style={styles.patientId}>ID: {patient.id}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setEditMode(!editMode)} style={styles.editSmallBtn}>
+                                <Ionicons name={editMode ? "eye-outline" : "create-outline"} size={16} color="white" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={{ color: 'white', fontSize: 15, fontWeight: '600', marginBottom: 12, marginTop: 5 }}>
+                            {editMode ? "✏️ Edit Prescription Mode" : "📋 Current Medications"}
+                        </Text>
+
+                        {meds.length === 0 && (
+                            <Text style={{ color: '#64748B', fontSize: 13, fontStyle: 'italic', paddingLeft: 5 }}>No registered treatment found for this patient.</Text>
+                        )}
+
+                        {meds.map((med) => (
+                            <View key={med.id} style={styles.medCard}>
+                                <View style={styles.medIcon}><Ionicons name="medical" size={20} color="#38BDF8" /></View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.medName}>{med.name}</Text>
+                                    <Text style={styles.medInfo}>{med.dosage}</Text>
+                                </View>
+                                {editMode && (
+                                    <TouchableOpacity onPress={() => deleteMed(med.id)} style={styles.deleteBtn}>
+                                        <Ionicons name="trash-outline" size={18} color="white" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ))}
+                    </>
+                )}
+            </ScrollView>
+
+            {editMode && patient && (
+                <View style={styles.addContainer}>
+                    <TouchableOpacity onPress={() => setShowAddForm(true)} style={styles.addBtn}>
+                        <Ionicons name="add" size={24} color="white" />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {showAddForm && (
+                <View style={styles.modal}>
+                    <View style={styles.formCard}>
+                        <Text style={styles.formTitle}>➕ Add Medication</Text>
+                        <TextInput placeholder="Medication Name" placeholderTextColor="#94A3B8" value={medName} onChangeText={setMedName} style={styles.formInput} />
+                        <TextInput placeholder="Dosage (e.g. 1000mg, 1 tablet)" placeholderTextColor="#94A3B8" value={medDosage} onChangeText={setMedDosage} style={styles.formInput} />
+                        <TextInput placeholder="Frequency (e.g. Morning, 3x/day)" placeholderTextColor="#94A3B8" value={medFrequency} onChangeText={setMedFrequency} style={styles.formInput} />
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                            <TouchableOpacity onPress={() => setShowAddForm(false)} style={styles.cancelBtn}>
+                                <Text style={{ color: 'white', fontWeight: '600' }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleAddMed} style={styles.saveBtn}>
+                                <Text style={{ color: 'white', fontWeight: '600' }}>Add</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
+        </View>
+    );
+
+    /* ================= SYMPTOMS ================= */
+    const renderSymptoms = () => (
+        <View style={styles.medsContainer}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.homeTitle}>🤒 Symptoms</Text>
+                    <Text style={styles.homeSub}>Review symptoms reported by patients</Text>
+                </View>
+                <TouchableOpacity onPress={resetSymptomsPage} style={styles.resetBtn}>
+                    <Ionicons name="refresh" size={20} color="white" />
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchBox}>
+                <Ionicons name="person-outline" size={18} color="#94A3B8" />
+                <TextInput placeholder="Patient name (Optional)" placeholderTextColor="#94A3B8" value={searchName} onChangeText={setSearchName} style={styles.searchInput} />
+            </View>
+
+            <View style={styles.searchBox}>
+                <Ionicons name="id-card-outline" size={18} color="#94A3B8" />
+                <TextInput placeholder="Patient ID (Optional)" placeholderTextColor="#94A3B8" value={searchId} onChangeText={searchId => setSearchId(searchId)} style={styles.searchInput} keyboardType="numeric" />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                <TouchableOpacity onPress={() => handleSearch(false)} style={[styles.searchBtn, { flex: 1, marginBottom: 0 }]}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>Search</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleSearch(true)} style={[styles.searchBtn, { flex: 1, marginBottom: 0, backgroundColor: '#0EA5E9' }]}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>Show All Patients</Text>
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
+                {patientsList.length > 0 && !symptomPatient && (
+                    <Text style={{ color: '#94A3B8', fontSize: 13, marginBottom: 10, fontWeight: '600' }}>
+                        Patients found ({patientsList.length}) : Tap one to view symptoms
+                    </Text>
+                )}
+
+                {!symptomPatient && patientsList.map((p) => (
+                    <TouchableOpacity
+                        key={p.id}
+                        onPress={async () => {
+                            setSymptomPatient(p);
+                            setPatient(p);
+                            try {
+                                console.log("Chargement des symptômes réels pour le patient:", p.id);
+                                const symptomsRes = await axios.get(`${API_URL}/api/symptoms/mobile/patient/${p.id}`);
+                                setSymptoms(symptomsRes.data);
+
+                                const medsRes = await axios.get(`${API_URL}/api/medications/mobile/patient/${p.id}`);
+                                setMeds(medsRes.data);
+                            } catch(e) {
+                                console.error("Erreur chargement symptômes:", e);
+                            }
+                        }}
+                        style={styles.patientCard}
+                    >
+                        <View>
+                            <Text style={styles.patientName}>{p.name}</Text>
+                            <Text style={styles.patientId}>ID: {p.id}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
+                    </TouchableOpacity>
+                ))}
+
+                {symptomPatient && (
+                    <>
+                        <View style={[styles.patientCard, { backgroundColor: 'rgba(56,189,248,0.12)', borderColor: '#38BDF8' }]}>
+                            <View>
+                                <Text style={styles.patientName}>{symptomPatient.name}</Text>
+                                <Text style={styles.patientId}>ID: {symptomPatient.id}</Text>
+                            </View>
+                            <Ionicons name="pulse" size={20} color="#EF4444" />
+                        </View>
+
+                        <TouchableOpacity style={styles.dropdownBtn} onPress={() => setShowSymptoms(!showSymptoms)}>
+                            <Text style={styles.dropdownBtnText}>View Symptoms Log</Text>
+                            <Ionicons name={showSymptoms ? "chevron-up" : "chevron-down"} size={20} color="white" />
+                        </TouchableOpacity>
+
+                        {showSymptoms && (
+                            <View style={{ marginTop: 10 }}>
+                                <View style={styles.toggleRow}>
+                                    <TouchableOpacity onPress={() => setSymptomType('new')} style={[styles.toggleTab, symptomType === 'new' && styles.toggleActive]}>
+                                        <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>New</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setSymptomType('old')} style={[styles.toggleTab, symptomType === 'old' && styles.toggleActive]}>
+                                        <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>History</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {symptoms.length === 0 ? (
+                                    <Text style={{ color: '#64748B', fontSize: 13, fontStyle: 'italic', paddingLeft: 5, marginTop: 10 }}>
+                                        No symptoms declared by this patient in database.
+                                    </Text>
+                                ) : (
+                                    symptoms.map((s) => (
+                                        <View key={s.id} style={styles.medCard}>
+                                            <View style={[styles.medIcon, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                                                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.medName}>{s.description}</Text>
+                                                <Text style={styles.medInfo}>
+                                                    {s.date ? `Le ${new Date(s.date).toLocaleDateString()}` : 'Récemment enregistré'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
+                            </View>
+                        )}
+                    </>
+                )}
+            </ScrollView>
+        </View>
+    );
 
     return (
-      <View style={styles.center}>
-        <Text style={styles.text}>{String(tab).toUpperCase()} SCREEN</Text>
-      </View>
+        <View style={styles.container}>
+            {tab === 'home' && renderHome()}
+            {tab === 'meds' && renderMeds()}
+            {tab === 'symptoms' && renderSymptoms()}
+            {tab === 'account' && renderAccount()}
+
+            <View style={styles.navWrapper}>
+                <BlurView intensity={30} style={styles.blurContainer}>
+                    {tabs.map((t) => {
+                        const isActive = tab === t;
+                        return (
+                            <TouchableOpacity key={t} onPress={() => changeTab(t)} style={styles.tab} activeOpacity={0.7}>
+                                <Animated.View style={{ transform: [{ scale: animValues[t] }] }}>
+                                    <Ionicons name={icons[t]} size={22} color={isActive ? '#38BDF8' : '#94A3B8'} />
+                                </Animated.View>
+                                <Text style={[styles.label, isActive && styles.active]}>
+                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </BlurView>
+            </View>
+        </View>
     );
-  };
-
-  return (
-    <View style={styles.container}>
-
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
-
-      {/* NAV */}
-      <View style={styles.navWrapper}>
-        <BlurView intensity={35} tint="dark" style={styles.nav}>
-          {tabs.map((t) => (
-            <TouchableOpacity
-              key={t}
-              onPress={() => changeTab(t)}
-              style={styles.tab}
-            >
-              <Ionicons
-                name={icons[t]}
-                size={22}
-                color={tab === t ? '#38BDF8' : '#94A3B8'}
-              />
-              <Text style={[styles.label, tab === t && styles.active]}>
-                {t}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </BlurView>
-      </View>
-
-    </View>
-  );
 }
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1220' },
-  content: { 
-  flex: 1,
-  alignSelf: 'center',
-  width: isTabletOrDesktop ? '70%' : '100%',
-  maxWidth: 1000,
-},
+    container: { flex: 1, backgroundColor: '#0B1220' },
+    card: { backgroundColor: 'rgba(255,255,255,0.03)', padding: 18, borderRadius: 20, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    cardTitle: { color: 'white', fontSize: 16, fontWeight: '700', marginBottom: 8 },
+    cardText: { color: '#94A3B8', fontSize: 14, lineHeight: 22 },
+    accountContainer: { flex: 1, paddingTop: 60, paddingHorizontal: 20 },
+    profileBox: { alignItems: 'center', marginVertical: 25 },
+    avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#38BDF8', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+    avatarImg: { width: '100%', height: '100%' },
+    changePhoto: { color: '#38BDF8', marginTop: 10, fontWeight: '600', fontSize: 13 },
+    input: { backgroundColor: '#0F172A', color: 'white', padding: 12, borderRadius: 12, marginTop: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    editBtn: { backgroundColor: 'transparent', padding: 15, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#38BDF8', marginTop: 10 },
+    editText: { color: '#38BDF8', fontWeight: '700' },
+    medsContainer: { flex: 1, paddingTop: 60, paddingHorizontal: 20 },
+    homeTitle: { color: 'white', fontSize: 24, fontWeight: '700' },
+    homeSub: { color: '#94A3B8', fontSize: 13, marginTop: 4, marginBottom: 15 },
+    resetBtn: { backgroundColor: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, paddingHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', height: 46 },
+    searchInput: { flex: 1, color: 'white', marginLeft: 10, fontSize: 14 },
+    searchBtn: { backgroundColor: '#38BDF8', padding: 12, borderRadius: 14, alignItems: 'center', marginBottom: 15, justifyContent: 'center', height: 46 },
+    patientCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 15, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    patientName: { color: 'white', fontSize: 15, fontWeight: '600' },
+    patientId: { color: '#64748B', fontSize: 12, marginTop: 3 },
+    editSmallBtn: { backgroundColor: 'rgba(255,255,255,0.08)', padding: 8, borderRadius: 10 },
+    medCard: { backgroundColor: 'rgba(255,255,255,0.02)', padding: 14, borderRadius: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
+    medIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(56,189,248,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    medName: { color: 'white', fontSize: 14, fontWeight: '600' },
+    medInfo: { color: '#64748B', fontSize: 12, marginTop: 3 },
+    deleteBtn: { backgroundColor: '#EF4444', padding: 8, borderRadius: 10 },
+    addContainer: { position: 'absolute', bottom: 100, right: 20 },
+    addBtn: { backgroundColor: '#38BDF8', width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 4 },
+    modal: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(11,18,32,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    formCard: { width: '100%', backgroundColor: '#0F172A', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+    formTitle: { color: 'white', fontSize: 18, fontWeight: '700', marginBottom: 15 },
+    formInput: { backgroundColor: '#0B1220', color: 'white', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    cancelBtn: { flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 12, alignItems: 'center' },
+    saveBtn: { flex: 1, backgroundColor: '#38BDF8', padding: 12, borderRadius: 12, alignItems: 'center' },
+    dropdownBtn: { backgroundColor: 'rgba(255,255,255,0.04)', padding: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    dropdownBtnText: { color: 'white', fontSize: 14, fontWeight: '600' },
+    toggleRow: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', padding: 4, borderRadius: 10, marginBottom: 15 },
+    toggleTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+    toggleActive: { backgroundColor: '#38BDF8' },
+    navWrapper: { position: 'absolute', bottom: 20, left: 20, right: 20, height: 64, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+    blurContainer: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', backgroundColor: 'rgba(11,18,32,0.5)' },
+    tab: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+    label: { color: '#94A3B8', fontSize: 10, marginTop: 4, fontWeight: '500' },
+    active: { color: '#38BDF8', fontWeight: '600' },
 
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  text: { color: 'white', fontSize: 18, fontWeight: '600' },
-
-  homeContainer: { 
-  padding: isTabletOrDesktop ? 40 : 20, 
-  paddingTop: isTabletOrDesktop ? 80 : 60 
-},
-  homeTitle: { color: 'white', fontSize: 22, fontWeight: '700' },
-  homeSub: { color: '#94A3B8', fontSize: 12, marginBottom: 20 },
-
-  accountContainer: { 
-  padding: isTabletOrDesktop ? 40 : 20, 
-  paddingTop: isTabletOrDesktop ? 80 : 60 
-},
-
-  profileBox: { alignItems: 'center', marginBottom: 25 },
-
-  avatar: {
-    width: 85,
-    height: 85,
-    borderRadius: 42,
-    backgroundColor: '#38BDF8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-
-  avatarImg: {
-    width: 85,
-    height: 85,
-    borderRadius: 42,
-  },
-
-  changePhoto: {
-    color: '#94A3B8',
-    fontSize: 11,
-    marginTop: 5,
-  },
-
-card: {
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  padding: isTabletOrDesktop ? 20 : 16,
-  borderRadius: 18,
-  marginBottom: 12,
-  borderWidth: 1,
-  borderColor: 'rgba(255,255,255,0.08)',
-},
-
-  cardTitle: { color: '#38BDF8', fontWeight: '600', marginBottom: 5 },
-  cardText: { color: '#E2E8F0', fontSize: 12 },
-
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    padding: 10,
-    borderRadius: 10,
-    color: 'white',
-    marginTop: 5,
-  },
-
-  editBtn: {
-    marginTop: 15,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(56,189,248,0.5)',
-    alignItems: 'center',
-  },
-
-  editText: { color: '#38BDF8', fontWeight: '600' },
-
-  logoutBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#EF4444',
-    padding: 14,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 15,
-    gap: 8,
-  },
-
-  logoutText: { color: 'white', fontWeight: '600' },
-
-  navWrapper: {
-    position: 'absolute',
-    bottom: 25,
-    width: '100%',
-    alignItems: 'center',
-  },
-
-nav: {
-  flexDirection: 'row',
-  width: isTabletOrDesktop ? 500 : '92%',
-  borderRadius: 38,
-  paddingVertical: isTabletOrDesktop ? 18 : 16,
-  paddingHorizontal: 10,
-  justifyContent: 'space-around',
-  alignItems: 'center',
-  borderWidth: 1,
-  borderColor: 'rgba(255,255,255,0.18)',
-  overflow: 'hidden',
-},
-
-  tab: { alignItems: 'center', flex: 1 },
-
-  label: { fontSize: 10, color: '#94A3B8', marginTop: 4 },
-
-  active: { color: '#38BDF8', fontWeight: '700' },
-
-
-cardRow: {
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  padding: isTabletOrDesktop ? 20 : 16,
-  borderRadius: 18,
-  marginBottom: 12,
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  borderWidth: 1,
-  borderColor: 'rgba(255,255,255,0.08)',
-},
-medsContainer: {
-  flex: 1,
-  paddingTop: isTabletOrDesktop ? 80 : 60,
-  paddingHorizontal: isTabletOrDesktop ? 40 : 20,
-  alignSelf: 'center',
-  width: isTabletOrDesktop ? '70%' : '100%',
-  maxWidth: 1000,
-},
-fabAdd: {
-  position: 'absolute',
-  bottom: 110,
-  right: 20,
-  width: 65,
-  height: 65,
-  borderRadius: 32,
-  backgroundColor: '#38BDF8',
-  justifyContent: 'center',
-  alignItems: 'center',
-  elevation: 5,
-},
-
-fabMinus: {
-  position: 'absolute',
-  bottom: 110,
-  left: 20,
-  width: 60,
-  height: 60,
-  borderRadius: 30,
-  backgroundColor: '#EF4444',
-  justifyContent: 'center',
-  alignItems: 'center',
-  elevation: 5,
-},
-modal: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.7)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-form: {
-  width: isTabletOrDesktop ? 400 : '85%',
-  backgroundColor: '#0F172A',
-  padding: 20,
-  borderRadius: 20,
-},
-formTitle: {
-  color: 'white',
-  fontSize: 18,
-  fontWeight: '700',
-  marginBottom: 15,
-},
-searchBox: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255,255,255,0.06)',
-  borderRadius: 12,
-  paddingHorizontal: 12,
-  marginBottom: 10,
-},
-
-searchInput: {
-  flex: 1,
-  color: 'white',
-  padding: 10,
-},
-
-searchBtn: {
-  backgroundColor: '#38BDF8',
-  padding: 12,
-  borderRadius: 12,
-  alignItems: 'center',
-  marginBottom: 15,
-},
-
-patientCard: {
-  backgroundColor: 'rgba(56,189,248,0.15)',
-  padding: 16,
-  borderRadius: 16,
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 15,
-},
-
-patientName: {
-  color: 'white',
-  fontWeight: '700',
-  fontSize: 16,
-},
-
-patientId: {
-  color: '#94A3B8',
-  fontSize: 12,
-},
-
-editSmallBtn: {
-  backgroundColor: '#38BDF8',
-  padding: 8,
-  borderRadius: 10,
-},
-
-medCard: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  padding: 14,
-  borderRadius: 16,
-  marginBottom: 10,
-},
-
-medIcon: {
-  width: 40,
-  height: 40,
-  borderRadius: 10,
-  backgroundColor: 'rgba(56,189,248,0.15)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginRight: 12,
-},
-
-medName: {
-  color: 'white',
-  fontWeight: '600',
-},
-
-medInfo: {
-  color: '#94A3B8',
-  fontSize: 12,
-},
-
-deleteBtn: {
-  backgroundColor: '#EF4444',
-  padding: 10,
-  borderRadius: 10,
-},
-
-addContainer: {
-  position: 'absolute',
-  bottom: 110,
-  right: 20,
-  flexDirection: 'row',
-  alignItems: 'center',
-},
-
-addInput: {
-  backgroundColor: 'rgba(255,255,255,0.08)',
-  color: 'white',
-  padding: 10,
-  borderRadius: 12,
-  width: 160,
-  marginRight: 10,
-},
-
-addBtn: {
-  width: 55,
-  height: 55,
-  borderRadius: 28,
-  backgroundColor: '#38BDF8',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-formCard: {
-  width: isTabletOrDesktop ? 400 : '85%',
-  backgroundColor: '#0F172A',
-  padding: 20,
-  borderRadius: 20,
-},
-
-cancelBtn: {
-  flex: 1,
-  backgroundColor: '#EF4444',
-  padding: 12,
-  borderRadius: 10,
-  alignItems: 'center',
-  marginRight: 5,
-},
-
-saveBtn: {
-  flex: 1,
-  backgroundColor: '#38BDF8',
-  padding: 12,
-  borderRadius: 10,
-  alignItems: 'center',
-  marginLeft: 5,
-},
-resetBtn: {
-  backgroundColor: 'rgba(56,189,248,0.2)',
-  padding: 10,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: '#38BDF8',
-},
-typeBtn: {
-  flex: 1,
-  padding: 12,
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  marginRight: 5,
-  borderRadius: 12,
-  alignItems: 'center',
-},
-
-typeBtnActive: {
-  backgroundColor: '#38BDF8',
-},
-
+    // ✅ NOVEAUX STYLES HARMONIEUX POUR LE BOUTON PLANNING SANS ALTÉRER LE RESTE
+    planningLinkBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(56,189,248,0.1)',
+        padding: 14,
+        borderRadius: 16,
+        marginBottom: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(56,189,248,0.25)',
+    },
+    planningLinkText: {
+        color: '#38BDF8',
+        fontWeight: '600',
+        fontSize: 14,
+        flex: 1,
+        marginLeft: 10,
+    }
 });

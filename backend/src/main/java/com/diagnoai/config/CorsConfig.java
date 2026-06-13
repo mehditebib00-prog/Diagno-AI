@@ -13,8 +13,10 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+                registry.addMapping("/**")
+                        // 💡 Ici on met "*" dans allowedOriginPatterns au lieu de http://localhost:*
+                        // C'est la bonne méthode recommandée par Spring quand allowCredentials est à true !
+                        .allowedOriginPatterns("*")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);

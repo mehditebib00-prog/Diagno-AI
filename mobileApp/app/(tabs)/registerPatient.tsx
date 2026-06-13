@@ -2,6 +2,10 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Animated } from 'r
 import { useRouter } from 'expo-router';
 import { useRef, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../../constants/api';
+
 export const options = {
   animation: 'fade_from_bottom',
 };
@@ -34,20 +38,42 @@ export default function RegisterPatient() {
     ]).start();
   }, []);
 
-const handleRegister = () => {
-  if (!name || !email || !password || !socialSecurity) {
-    setError('Please fill all fields');
-    return;
-  }
+    const handleRegister = async () => {
+        if (!name || !email || !password || !socialSecurity) {
+            setError('Please fill all fields');
+            return;
+        }
 
-  setError('');
-  setLoading(true);
+        setError('');
+        setLoading(true);
 
-  setTimeout(() => {
-    setLoading(false);
-    router.replace('/(tabs)/Pdashboard');
-  }, 800);
-};
+        try {
+            // On envoie exactement les clés attendues par le DTO Java : name, email, password, socialSecurity
+            const response = await axios.post(`${API_URL}/api/auth/register`, {
+                name: name,
+                email: email,
+                password: password,
+                socialSecurity: socialSecurity // 💡 Corrigé ici pour matcher le DTO Java !
+            });
+
+            setLoading(false);
+            console.log('Inscription réussie !', response.data);
+            //On enregistre l'email qui vient d'être inscrit
+            await AsyncStorage.setItem('userEmail', email);
+            // Une fois inscrit, on l'envoie sur le Dashboard
+            router.replace('/(tabs)/Pdashboard');
+
+        } catch (err: any) {
+            setLoading(false);
+
+            if (err.response) {
+                setError(err.response.data.message || 'Registration failed');
+            } else {
+                setError('Cannot connect to server. Please check your network.');
+                console.log('Détail de l\'erreur réseau :', err.message);
+            }
+        }
+    };
 
   const handleGoogle = () => {
     alert('Google signup (to integrate later)');

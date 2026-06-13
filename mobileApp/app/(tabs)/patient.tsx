@@ -2,6 +2,9 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Animated } from 'r
 import { useRouter } from 'expo-router';
 import { useRef, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '../../constants/api.js';
 
 export default function PatientLogin() {
   const router = useRouter();
@@ -29,22 +32,39 @@ export default function PatientLogin() {
     ]).start();
   }, []);
 
-  const handleLogin = () => {
-    if (!patientId || !password) {
-      setError('Please fill all fields');
-      return;
-    }
+    const handleLogin = async () => {
+        if (!patientId || !password) {
+            setError('Please fill all fields');
+            return;
+        }
 
-    setError('');
-    setLoading(true);
+        setError('');
+        setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+        try {
+            const response = await axios.post(`${API_URL}/api/auth/login`, {
+                email: patientId,
+                password: password
+            });
 
-      // 🔥 REDIRECTION VERS DASHBOARD PATIENT
-      router.replace('/(tabs)/Pdashboard');
-    }, 800);
-  };
+            setLoading(false);
+            console.log('Connexion réussie ! Données reçues :', response.data);
+           // On enregistre l'email du patient dans la mémoire du téléphone
+            await AsyncStorage.setItem('userEmail', response.data.email);
+            // 🔥 REDIRECTION VERS DASHBOARD PATIENT
+            router.replace('/(tabs)/Pdashboard');
+
+        } catch (err: any) { // 👈 On ajoute ": any" ici pour calmer TypeScript
+            setLoading(false);
+
+            if (err.response) {
+                setError(err.response.data.message || 'Invalid credentials');
+            } else {
+                setError('Cannot connect to server. Please check your network.');
+                console.log('Détail de l\'erreur réseau :', err.message);
+            }
+        }
+    };
 
   const handleGoogle = () => {
     alert('Google login (to integrate later)');
@@ -124,7 +144,7 @@ export default function PatientLogin() {
         {/* REGISTER */}
         <TouchableOpacity onPress={() => router.push('/registerPatient')}>
           <Text style={styles.registerText}>
-            Don't have an account? <Text style={styles.registerBold}>Create one</Text>
+            Dont have an account? <Text style={styles.registerBold}>Create one</Text>
           </Text>
         </TouchableOpacity>
 

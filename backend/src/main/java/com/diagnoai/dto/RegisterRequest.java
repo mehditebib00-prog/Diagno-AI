@@ -5,14 +5,16 @@ public class RegisterRequest {
     private String name;
     private String email;
     private String password;
+    private String socialSecurity;
 
     // Constructors
     public RegisterRequest() {}
 
-    public RegisterRequest(String name, String email, String password) {
+    public RegisterRequest(String name, String email, String password, String socialSecurity) {
         this.name = name;
         this.email = email;
         this.password = password;
+        this.socialSecurity = socialSecurity;
     }
 
     // Getters and Setters
@@ -24,4 +26,7 @@ public class RegisterRequest {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getSocialSecurity() { return socialSecurity; }
+    public void setSocialSecurity(String socialSecurity) { this.socialSecurity = socialSecurity; }
 }
