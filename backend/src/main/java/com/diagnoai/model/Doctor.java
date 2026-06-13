@@ -1,22 +1,42 @@
 package com.diagnoai.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "doctors") // Optionnel : pour donner un nom propre à ta table SQL
 public class Doctor {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Permet l'auto-incrémentation de l'ID en BDD
+    private int id; // Si tes autres relations ou Repositories attendent un Long, tu peux changer 'int' en 'Long'
+
     private String name;
     private String specialization;
-    private int id;
     private String email;
     private String password;
 
-    // Constructors
+    // Constructeur vide obligatoire pour JPA
     public Doctor() {
     }
 
-    public Doctor(String name, String specialization, int id, String email,  String password) {
+    public Doctor(String name, String specialization, int id, String email, String password) {
         this.name = name;
         this.specialization = specialization;
         this.id = id;
         this.email = email;
         this.password = password;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -33,14 +53,6 @@ public class Doctor {
 
     public void setSpecialization(String specialization) {
         this.specialization = specialization;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getEmail() {

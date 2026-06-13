@@ -80,7 +80,7 @@ public class AuthService {
             String token = jwtUtils.generateToken(doctor.getEmail());
 
             // On retourne la réponse d'authentification pour le médecin
-            return new AuthResponse(token, doctor.getId(), doctor.getEmail(), doctor.getName());
+            return new AuthResponse(token, Long.valueOf(doctor.getId()), doctor.getEmail(), doctor.getName());
         }
 
         // 3. Si l'email n'est nulle part
