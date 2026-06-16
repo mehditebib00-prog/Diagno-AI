@@ -267,16 +267,42 @@ const getGreeting = () => {
   /* ================= HOME ================= */
   const renderHome = () => (
   <ScrollView style={{ padding: 20, paddingTop: 60 }}>
-
-    {/* TITLE */}
+    <View
+  style={{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  }}
+>
+  <View>
     <Text style={{ color: 'white', fontSize: 24, fontWeight: '700' }}>
-  {getGreeting()}
+      {getGreeting()}
     </Text>
 
     <Text style={{ color: '#94A3B8', marginTop: 5 }}>
       Your health dashboard is active
     </Text>
+  </View>
 
+  <TouchableOpacity
+    onPress={() => router.push('/(tabs)/Chatbot')}
+    style={{
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      backgroundColor: '#38BDF8',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}
+  >
+    <Ionicons
+      name="chatbubble-ellipses"
+      size={24}
+      color="white"
+    />
+  </TouchableOpacity>
+</View>
     {/* IMAGE */}
     <View style={{ alignItems: 'center', marginVertical: 20 }}>
       <Image
