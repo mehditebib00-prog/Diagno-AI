@@ -32,22 +32,38 @@ export default function PatientDashboard() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{
+    id: string;
+    fullName?: string;
+    residence?: string;
+    phone?: string;
+    socialSecurity?: string;
+    email?: string;
+  } | null>(null);
+
   useEffect(() => {
-  const loadToken = async () => {
-    const savedToken = await AsyncStorage.getItem("token");
-    setToken(savedToken);
-  };
+    const loadAuthData = async () => {
+      try {
+        const savedToken = await AsyncStorage.getItem('token');
+        setToken(savedToken);
 
-  loadToken();
-}, []);
+        const savedProfile = await AsyncStorage.getItem('profile');
+        if (savedProfile) {
+          const parsedProfile = JSON.parse(savedProfile);
+          setProfile(parsedProfile);
+          if (parsedProfile?.id) {
+            fetchSymptoms(parsedProfile.id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load auth data', error);
+      }
+    };
 
- const [profile, setProfile] = useState({
-  id: '123456',
-  fullName: 'John Doe',
-  residence: 'Lyon',
-  phone: '+33 6 12 34 56 78',
-  socialSecurity: '1 99 12 75 123 456 78',
-});
+    loadAuthData();
+  }, []);
+
+
   const [meds, setMeds] = useState([
   {
     id: '1',
@@ -149,22 +165,28 @@ const commonSymptoms = [
   const [deleteSymptomMode, setDeleteSymptomMode] = useState(false);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
-  const fetchSymptoms = async () => {
-  try {
-    const res = await fetch(`${API_URL}/api/symptoms`);
+  const fetchSymptoms = async (patientId?: string) => {
+    try {
+      const url = patientId
+        ? `${API_URL}/api/symptoms/patient/${patientId}`
+        : `${API_URL}/api/symptoms`;
 
-    if (!res.ok) throw new Error('Failed to load symptoms');
+      const res = await fetch(url);
 
-    const data = await res.json();
-    setSymptoms(data);
-  } catch (err) {
-    console.log(err);
-    Alert.alert('Error', 'Could not load symptoms');
-  }
-};
-useEffect(() => {
-  fetchSymptoms();
-}, []);
+      if (!res.ok) throw new Error('Failed to load symptoms');
+
+      const data = await res.json();
+      setSymptoms(data);
+    } catch (err) {
+      console.log(err);
+      Alert.alert('Error', 'Could not load symptoms');
+    }
+  };
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    fetchSymptoms(profile.id);
+  }, [profile]);
 
 const [appointment, setAppointment] = useState({
   name: '',
@@ -190,9 +212,14 @@ const handleAppointmentSubmit = () => {
 
     if (!value) return;
 
+    if (!profile?.id) {
+      Alert.alert('Error', 'Patient profile is not loaded yet');
+      return;
+    }
+
     // prevent duplicates locally
     const exists = symptoms.some(
-      (s) => s.name.toLowerCase() === value.toLowerCase()
+      (s) => (s.description || s.name || '').toLowerCase() === value.toLowerCase()
     );
 
     if (exists) {
@@ -207,7 +234,11 @@ const handleAppointmentSubmit = () => {
           "Content-Type": "application/json",
           authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: value }),
+        body: JSON.stringify({
+          description: value,
+          patientId: Number(profile.id),
+          date: new Date().toISOString(),
+        }),
       });
 
       if (!res.ok) {
@@ -325,16 +356,42 @@ const getGreeting = () => {
   /* ================= HOME ================= */
   const renderHome = () => (
   <ScrollView style={{ padding: 20, paddingTop: 60 }}>
-
-    {/* TITLE */}
+    <View
+  style={{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  }}
+>
+  <View>
     <Text style={{ color: 'white', fontSize: 24, fontWeight: '700' }}>
-  {getGreeting()}
+      {getGreeting()}
     </Text>
 
     <Text style={{ color: '#94A3B8', marginTop: 5 }}>
       Your health dashboard is active
     </Text>
+  </View>
 
+  <TouchableOpacity
+    onPress={() => router.push('/(tabs)/Chatbot')}
+    style={{
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      backgroundColor: '#38BDF8',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}
+  >
+    <Ionicons
+      name="chatbubble-ellipses"
+      size={24}
+      color="white"
+    />
+  </TouchableOpacity>
+</View>
     {/* IMAGE */}
     <View style={{ alignItems: 'center', marginVertical: 20 }}>
       <Image
@@ -424,7 +481,7 @@ const getGreeting = () => {
         <TextInput
           value={profile?.fullName || ''}
           onChangeText={(t) =>
-            setProfile({ ...profile, fullName: t })
+            setProfile((prev) => prev ? { ...prev, fullName: t } : prev)
           }
           style={styles.input}
         />
@@ -442,7 +499,7 @@ const getGreeting = () => {
         <TextInput
           value={profile?.residence || ''}
           onChangeText={(t) =>
-            setProfile({ ...profile, residence: t })
+            setProfile((prev) => prev ? { ...prev, residence: t } : prev)
           }
           style={styles.input}
         />
@@ -458,7 +515,7 @@ const getGreeting = () => {
         <TextInput
           value={profile?.phone || ''}
           onChangeText={(t) =>
-            setProfile({ ...profile, phone: t })
+            setProfile((prev) => prev ? { ...prev, phone: t } : prev)
           }
           style={styles.input}
         />

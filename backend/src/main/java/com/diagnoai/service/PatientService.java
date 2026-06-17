@@ -1,92 +1,43 @@
 package com.diagnoai.service;
 
-import com.diagnoai.dto.PatientDTO;
-import com.diagnoai.model.Doctor;
 import com.diagnoai.model.Patient;
 import com.diagnoai.repository.DoctorRepository;
 import com.diagnoai.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class PatientService {
 
-    @Autowired
-    private PatientRepository patientRepository;
+    private final PatientRepository patientRepository;
 
     @Autowired
-    private DoctorRepository doctorRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    // GET ALL PATIENTS
-    public List<PatientDTO> getAllPatients() {
-        return patientRepository.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+    public PatientService(PatientRepository patientRepository) {
+        this.patientRepository = patientRepository;
     }
 
-    // GET PATIENT BY ID
-    public Optional<PatientDTO> getPatientById(Long id) {
-        return patientRepository.findById(id)
-                .map(this::convertToDTO);
+    /**
+     * Récupère tous les patients de la base de données.
+     */
+    public List<Patient> getAllPatients() {
+        return patientRepository.findAll();
     }
 
-    // CREATE PATIENT + AUTO ASSIGN DOCTOR
-    public PatientDTO createPatient(PatientDTO patientDTO) {
-
-        Patient patient = convertToEntity(patientDTO);
-
-        // Encode password
-        patient.setPassword(passwordEncoder.encode(patient.getPassword()));
-
-        // Assign doctor (simple MVP logic)
-        Doctor doctor = doctorRepository.findAll()
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("No doctors available"));
-
-        patient.setDoctor(doctor);
-
-        Patient savedPatient = patientRepository.save(patient);
-
-        return convertToDTO(savedPatient);
+    /**
+     * Trouve un patient par son ID.
+     */
+    public Optional<Patient> getPatientById(Long id) {
+        return patientRepository.findById(id);
     }
 
-    // UPDATE PATIENT
-    public Optional<PatientDTO> updatePatient(Long id, PatientDTO patientDTO) {
-        return patientRepository.findById(id).map(patient -> {
-
-            patient.setName(patientDTO.getName());
-            patient.setEmail(patientDTO.getEmail());
-
-            if (patientDTO.getPassword() != null) {
-                patient.setPassword(passwordEncoder.encode(patientDTO.getPassword()));
-            }
-
-            Patient updated = patientRepository.save(patient);
-            return convertToDTO(updated);
-        });
-    }
-
-    // DELETE PATIENT
-    public boolean deletePatient(Long id) {
-        if (patientRepository.existsById(id)) {
-            patientRepository.deleteById(id);
-            return true;
-        }
-        return false;
-    }
-
-    // FIND BY EMAIL
-    public Optional<Patient> findByEmail(String email) {
+    /**
+     * Trouve un patient par son adresse email.
+     * Utile pour la reconnexion et la synchronisation du profil mobile.
+     */
+    public Optional<Patient> getPatientByEmail(String email) {
         return patientRepository.findByEmail(email);
     }
 
@@ -94,28 +45,29 @@ public class PatientService {
     // MAPPING METHODS
     // =========================
 
-    private PatientDTO convertToDTO(Patient patient) {
-        return new PatientDTO(
-                patient.getId(),
-                patient.getName(),
-                patient.getEmail(),
-                patient.getSocialSecurity(),
-                patient.getDoctor() != null ? patient.getDoctor().getName() : null
-        );
+    /**
+     * Enregistre ou met à jour un patient.
+     */
+    public Patient savePatient(Patient patient) {
+        // Optionnel : ajouter des vérifications ici (ex: vérifier si l'email existe déjà)
+        return patientRepository.save(patient);
     }
 
-    private Patient convertToEntity(PatientDTO dto) {
-        Patient patient = new Patient();
-
-        patient.setId(dto.getId());
-        patient.setName(dto.getName());
-        patient.setEmail(dto.getEmail());
-        patient.setSocialSecurity(dto.getSocialSecurity());
-
-        if (dto.getPassword() != null) {
-            patient.setPassword(dto.getPassword());
-        }
-
-        return patient;
+    /**
+     * Supprime un patient de la base de données.
+     */
+   public void deletePatient(Long id) {
+    if (!patientRepository.existsById(id)) {
+        throw new RuntimeException("Patient introuvable avec l'ID : " + id);
+    }
+    patientRepository.deleteById(id);
+}
+    public Optional<Patient> updatePatient(Long id, Patient updatedPatient) {
+        return patientRepository.findById(id).map(existingPatient -> {
+            existingPatient.setName(updatedPatient.getName());
+            existingPatient.setEmail(updatedPatient.getEmail());
+            existingPatient.setSocialSecurity(updatedPatient.getSocialSecurity());
+            return patientRepository.save(existingPatient);
+        });
     }
 }

@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useRef, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 export const options = {
   animation: 'fade_from_bottom',
@@ -68,6 +69,15 @@ if (!response.ok) {
   throw new Error(data.message || 'Registration failed');
 }
 
+    await AsyncStorage.setItem('token', data.token);
+    await AsyncStorage.setItem(
+      'profile',
+      JSON.stringify({
+        id: data.id,
+        fullName: data.name,
+        email: data.email,
+      })
+    );
 
     console.log('Patient created:', data);
 

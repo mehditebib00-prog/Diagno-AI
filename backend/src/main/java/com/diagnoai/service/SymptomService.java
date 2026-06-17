@@ -7,6 +7,7 @@ import com.diagnoai.repository.PatientRepository;
 import com.diagnoai.repository.SymptomRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,15 +39,15 @@ public class SymptomService {
     }
 
     public SymptomDTO createSymptom(SymptomDTO symptomDTO) {
-        Optional<Patient> patient = patientRepository.findById(symptomDTO.getPatientId());
-        if (patient.isPresent()) {
-            Symptom symptom = convertToEntity(symptomDTO);
-            symptom.setPatient(patient.get());
-            Symptom savedSymptom = symptomRepository.save(symptom);
-            return convertToDTO(savedSymptom);
-        }
-        throw new RuntimeException("Patient not found");
-    }
+    Patient patient = patientRepository.findById(symptomDTO.getPatientId())
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Patient not found with id: " + symptomDTO.getPatientId()));
+
+    Symptom symptom = convertToEntity(symptomDTO);
+    symptom.setPatient(patient);
+    Symptom savedSymptom = symptomRepository.save(symptom);
+    return convertToDTO(savedSymptom);
+}
 
     public Optional<SymptomDTO> updateSymptom(Long id, SymptomDTO symptomDTO) {
         return symptomRepository.findById(id).map(symptom -> {
@@ -75,5 +76,12 @@ public class SymptomService {
         symptom.setDescription(symptomDTO.getDescription());
         symptom.setDate(symptomDTO.getDate());
         return symptom;
+    }
+
+    // Simple custom exception to represent resource not found scenarios.
+    public static class ResourceNotFoundException extends RuntimeException {
+        public ResourceNotFoundException(String message) {
+            super(message);
+        }
     }
 }

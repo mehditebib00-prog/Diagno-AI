@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useRef, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../../config';
 
@@ -65,7 +66,16 @@ export default function PatientLogin() {
       throw new Error(data.message || 'Login failed');
     }
 
-    // save token later if needed
+    await AsyncStorage.setItem('token', data.token);
+    await AsyncStorage.setItem(
+      'profile',
+      JSON.stringify({
+        id: data.id,
+        fullName: data.name,
+        email: data.email,
+      })
+    );
+
     console.log("TOKEN:", data.token);
 
     router.replace('/(tabs)/Pdashboard');

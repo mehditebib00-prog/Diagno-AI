@@ -6,7 +6,10 @@ C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\SymptomService.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\PatientDTO.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Doctor.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\ChatController.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\DoctorController.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Medication.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\RAGcontroller.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Patient.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\AuthController.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\PatientService.java
@@ -19,13 +22,16 @@ C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\Appoint
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\AuthService.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\security\UserDetailsServiceImpl.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\LoginRequest.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\ai\RAGknowledgebasebuilder.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\security\JwtUtils.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\config\GlobalExceptionHandler.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\config\RAGconfig.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\config\SecurityConfig.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\AIController.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\DiagnoAiApplication.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\repository\SymptomRepository.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\ai\MCPContextBuilder.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\ai\RAGservice.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\config\CorsConfig.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\SymptomAnalysisService.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\AppointmentService.java

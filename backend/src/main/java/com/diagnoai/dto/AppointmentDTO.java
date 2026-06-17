@@ -8,14 +8,16 @@ public class AppointmentDTO {
     private LocalDateTime date;
     private String doctorName;
     private Long patientId;
+    private String status;
+    private String rejectionReason;
 
-    // Constructors
     public AppointmentDTO() {}
 
-    public AppointmentDTO(Long id, LocalDateTime date, String doctorName, Long patientId) {
+    public AppointmentDTO(Long id, LocalDateTime date, String doctorName, String status, Long patientId) {
         this.id = id;
         this.date = date;
         this.doctorName = doctorName;
+        this.status = status;
         this.patientId = patientId;
     }
 
@@ -29,6 +31,17 @@ public class AppointmentDTO {
     public String getDoctorName() { return doctorName; }
     public void setDoctorName(String doctorName) { this.doctorName = doctorName; }
 
+    public String getStatus() { return status; } // ✅
+    public void setStatus(String status) { this.status = status; } // ✅
+
     public Long getPatientId() { return patientId; }
     public void setPatientId(Long patientId) { this.patientId = patientId; }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
 }
