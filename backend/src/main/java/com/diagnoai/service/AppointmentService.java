@@ -42,6 +42,9 @@ public class AppointmentService {
         if (patient.isPresent()) {
             Appointment appointment = convertToEntity(appointmentDTO);
             appointment.setPatient(patient.get());
+            if (appointment.getStatus() == null) {
+                appointment.setStatus("pending"); // ✅ Statut par défaut à la création
+            }
             Appointment savedAppointment = appointmentRepository.save(appointment);
             return convertToDTO(savedAppointment);
         }
@@ -52,6 +55,7 @@ public class AppointmentService {
         return appointmentRepository.findById(id).map(appointment -> {
             appointment.setDate(appointmentDTO.getDate());
             appointment.setDoctorName(appointmentDTO.getDoctorName());
+            appointment.setStatus(appointmentDTO.getStatus()); // ✅ Prise en compte du statut
             Appointment updatedAppointment = appointmentRepository.save(appointment);
             return convertToDTO(updatedAppointment);
         });
@@ -66,7 +70,13 @@ public class AppointmentService {
     }
 
     private AppointmentDTO convertToDTO(Appointment appointment) {
-        return new AppointmentDTO(appointment.getId(), appointment.getDate(), appointment.getDoctorName(), appointment.getPatient().getId());
+        return new AppointmentDTO(
+                appointment.getId(),
+                appointment.getDate(),
+                appointment.getDoctorName(),
+                appointment.getStatus(), // ✅
+                appointment.getPatient().getId()
+        );
     }
 
     private Appointment convertToEntity(AppointmentDTO appointmentDTO) {
@@ -74,6 +84,29 @@ public class AppointmentService {
         appointment.setId(appointmentDTO.getId());
         appointment.setDate(appointmentDTO.getDate());
         appointment.setDoctorName(appointmentDTO.getDoctorName());
+        appointment.setStatus(appointmentDTO.getStatus()); // ✅
         return appointment;
+    }
+
+
+    public List<AppointmentDTO> getAppointmentsByDoctorName(String doctorName) {
+        return appointmentRepository.findByDoctorName(doctorName).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public AppointmentDTO updateAppointmentStatus(Long id, String status, String rejectionReason) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Rendez-vous introuvable"));
+
+        appointment.setStatus(status);
+        if ("REFUSED".equals(status)) {
+            appointment.setRejectionReason(rejectionReason);
+        } else {
+            appointment.setRejectionReason(null); // Nettoyer si accepté
+        }
+
+        Appointment updated = appointmentRepository.save(appointment);
+        return convertToDTO(updated);
     }
 }
