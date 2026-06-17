@@ -7,6 +7,7 @@ C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\service\Sym
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\dto\PatientDTO.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Doctor.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\ChatController.java
+C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\DoctorController.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Medication.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\controller\RAGcontroller.java
 C:\Users\acer\Documents\Diagno-AI\backend\src\main\java\com\diagnoai\model\Patient.java

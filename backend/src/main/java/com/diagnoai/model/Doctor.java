@@ -1,22 +1,37 @@
 package com.diagnoai.model;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "doctors")
 public class Doctor {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String name;
     private String specialization;
-    private int id;
     private String email;
     private String password;
 
-    // Constructors
-    public Doctor() {
-    }
+    public Doctor() {}
 
-    public Doctor(String name, String specialization, int id, String email,  String password) {
+    public Doctor(String name, String specialization, String email, String password) {
         this.name = name;
         this.specialization = specialization;
-        this.id = id;
         this.email = email;
         this.password = password;
+    }
+
+    // getters & setters
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -33,14 +48,6 @@ public class Doctor {
 
     public void setSpecialization(String specialization) {
         this.specialization = specialization;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 
     public String getEmail() {

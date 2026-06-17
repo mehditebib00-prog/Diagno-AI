@@ -74,42 +74,41 @@ public class PatientController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PatientDTO>> getAllPatients() {
+    public ResponseEntity<List<Patient>> getAllPatients() {
         return ResponseEntity.ok(patientService.getAllPatients());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PatientDTO> getPatientById(@PathVariable Long id) {
+    public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
         return patientService.getPatientById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<PatientDTO> getPatientProfile(@RequestParam String email) {
+    public ResponseEntity<Patient> getPatientProfile(@RequestParam String email) {
         return patientService.getPatientByEmail(email)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<PatientDTO> createPatient(@RequestBody PatientDTO patientDTO) {
-        PatientDTO createdPatient = patientService.createPatient(patientDTO);
+    public ResponseEntity<Patient> createPatient(@RequestBody Patient patient) {
+        Patient createdPatient = patientService.savePatient(patient);
         return ResponseEntity.ok(createdPatient);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PatientDTO> updatePatient(@PathVariable Long id, @RequestBody PatientDTO patientDTO) {
-        return patientService.updatePatient(id, patientDTO)
+    public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @RequestBody Patient patient) {
+        return patientService.updatePatient(id, patient)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
-        if (patientService.deletePatient(id)) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+   @DeleteMapping("/{id}")
+public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
+    patientService.deletePatient(id);
+    return ResponseEntity.noContent().build();
+
     }
 }

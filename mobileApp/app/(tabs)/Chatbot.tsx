@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../config';
 
-const API_URL = 'YOUR_BACKEND_URL/chat';
+
 
 export default function Chatbot() {
   const router = useRouter();
@@ -27,54 +29,57 @@ export default function Chatbot() {
     },
   ]);
 
-  const sendMessage = async () => {
-    if (!message.trim()) return;
+ const sendMessage = async () => {
+  if (!message.trim()) return;
 
-    const userText = message;
+  const userText = message;
+
+  const token = await AsyncStorage.getItem('token'); // ✅ ADD THIS
+
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: Date.now().toString(),
+      text: userText,
+      sender: 'user',
+    },
+  ]);
+
+  setMessage('');
+
+  try {
+    const response = await fetch(`${API_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // now it works
+      },
+      body: JSON.stringify({
+        message: userText,
+      }),
+    });
+
+    const data = await response.json();
 
     setMessages((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
-        text: userText,
-        sender: 'user',
+        id: (Date.now() + 1).toString(),
+        text: data.response,
+        sender: 'bot',
       },
     ]);
-
-    setMessage('');
-
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userText,
-        }),
-      });
-
-      const data = await response.json();
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: data.response,
-          sender: 'bot',
-        },
-      ]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          text: 'Unable to connect to server.',
-          sender: 'bot',
-        },
-      ]);
-    }
-  };
+  } catch (error) {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: (Date.now() + 1).toString(),
+        text: 'Unable to connect to server.',
+        sender: 'bot',
+      },
+    ]);
+  }
+};
 
   return (
     <KeyboardAvoidingView

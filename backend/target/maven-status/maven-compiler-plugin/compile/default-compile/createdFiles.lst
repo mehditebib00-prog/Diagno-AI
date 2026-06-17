@@ -4,13 +4,12 @@ com\diagnoai\ai\RAGknowledgebasebuilder$BuildResult.class
 com\diagnoai\dto\LoginRequest.class
 com\diagnoai\ai\RAGknowledgebasebuilder.class
 com\diagnoai\ai\RAGservice.class
+com\diagnoai\service\SymptomService$ResourceNotFoundException.class
 com\diagnoai\repository\AppointmentRepository.class
 com\diagnoai\repository\SymptomRepository.class
 com\diagnoai\service\SymptomService.class
 com\diagnoai\config\RAGconfig$Rag.class
-com\diagnoai\service\PatientService.class
 com\diagnoai\service\AuthService.class
-com\diagnoai\controller\PatientController.class
 com\diagnoai\model\Appointment.class
 com\diagnoai\service\AppointmentService.class
 com\diagnoai\config\RAGconfig.class
@@ -32,6 +31,7 @@ com\diagnoai\dto\AuthResponse.class
 com\diagnoai\model\Doctor.class
 com\diagnoai\model\Symptom.class
 com\diagnoai\repository\PatientRepository.class
+com\diagnoai\controller\DoctorController.class
 com\diagnoai\repository\DoctorRepository.class
 com\diagnoai\controller\AppointmentController.class
 com\diagnoai\controller\AuthController.class
@@ -41,4 +41,5 @@ com\diagnoai\model\Medication.class
 com\diagnoai\config\GlobalExceptionHandler.class
 com\diagnoai\security\JwtAuthenticationFilter.class
 com\diagnoai\dto\SymptomDTO.class
+com\diagnoai\ai\MCPContextBuilder.class
 com\diagnoai\controller\MedicationController.class

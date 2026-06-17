@@ -56,10 +56,18 @@ public class PatientService {
     /**
      * Supprime un patient de la base de données.
      */
-    public void deletePatient(Long id) {
-        if (!patientRepository.existsById(id)) {
-            throw new RuntimeException("Patient introuvable avec l'ID : " + id);
-        }
-        patientRepository.deleteById(id);
+   public void deletePatient(Long id) {
+    if (!patientRepository.existsById(id)) {
+        throw new RuntimeException("Patient introuvable avec l'ID : " + id);
+    }
+    patientRepository.deleteById(id);
+}
+    public Optional<Patient> updatePatient(Long id, Patient updatedPatient) {
+        return patientRepository.findById(id).map(existingPatient -> {
+            existingPatient.setName(updatedPatient.getName());
+            existingPatient.setEmail(updatedPatient.getEmail());
+            existingPatient.setSocialSecurity(updatedPatient.getSocialSecurity());
+            return patientRepository.save(existingPatient);
+        });
     }
 }
