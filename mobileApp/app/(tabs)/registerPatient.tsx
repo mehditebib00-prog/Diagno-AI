@@ -7,36 +7,36 @@ import axios from 'axios';
 import { API_URL } from '../../constants/api';
 
 export const options = {
-  animation: 'fade_from_bottom',
+    animation: 'fade_from_bottom',
 };
 
 export default function RegisterPatient() {
-  const router = useRouter();
+    const router = useRouter();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [socialSecurity, setSocialSecurity] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [socialSecurity, setSocialSecurity] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  const fade = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+    const fade = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(20)).current;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fade, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: 0,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
 
     const handleRegister = async () => {
         if (!name || !email || !password || !socialSecurity) {
@@ -48,19 +48,16 @@ export default function RegisterPatient() {
         setLoading(true);
 
         try {
-            // On envoie exactement les clés attendues par le DTO Java : name, email, password, socialSecurity
             const response = await axios.post(`${API_URL}/api/auth/register`, {
                 name: name,
                 email: email,
                 password: password,
-                socialSecurity: socialSecurity // 💡 Corrigé ici pour matcher le DTO Java !
+                socialSecurity: socialSecurity
             });
 
             setLoading(false);
             console.log('Inscription réussie !', response.data);
-            //On enregistre l'email qui vient d'être inscrit
             await AsyncStorage.setItem('userEmail', email);
-            // Une fois inscrit, on l'envoie sur le Dashboard
             router.replace('/(tabs)/Pdashboard');
 
         } catch (err: any) {
@@ -75,254 +72,203 @@ export default function RegisterPatient() {
         }
     };
 
-  const handleGoogle = () => {
-    alert('Google signup (to integrate later)');
-  };
+    return (
+        <View style={styles.container}>
 
-  const handleApple = () => {
-    alert('Apple signup (iPhone Sign-In)');
-  };
+            {/* HEADER */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <Ionicons name="arrow-back" size={22} color="#CBD5F5" />
+                </TouchableOpacity>
 
-  return (
-    <View style={styles.container}>
+                <Text style={styles.title}>Create Account</Text>
+            </View>
 
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#CBD5F5" />
-        </TouchableOpacity>
+            <Text style={styles.subtitle}>Patient registration</Text>
 
-        <Text style={styles.title}>Create Account</Text>
-      </View>
+            {/* CARD */}
+            <Animated.View style={[styles.card, { opacity: fade, transform: [{ translateY }] }]}>
 
-      <Text style={styles.subtitle}>Patient registration</Text>
+                {/* NAME */}
+                <View style={styles.input}>
+                    <Ionicons name="person-outline" size={18} color="#94A3B8" />
+                    <TextInput
+                        placeholder="Full Name"
+                        placeholderTextColor="#94A3B8"
+                        style={styles.inputText}
+                        value={name}
+                        onChangeText={setName}
+                    />
+                </View>
 
-      {/* CARD */}
-      <Animated.View style={[styles.card, { opacity: fade, transform: [{ translateY }] }]}>
+                {/* SOCIAL SECURITY */}
+                <View style={styles.input}>
+                    <Ionicons name="card-outline" size={18} color="#94A3B8" />
+                    <TextInput
+                        placeholder="Social Security Number"
+                        placeholderTextColor="#94A3B8"
+                        style={styles.inputText}
+                        value={socialSecurity}
+                        onChangeText={setSocialSecurity}
+                    />
+                </View>
 
-        {/* NAME */}
-        <View style={styles.input}>
-          <Ionicons name="person-outline" size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Full Name"
-            placeholderTextColor="#94A3B8"
-            style={styles.inputText}
-            value={name}
-            onChangeText={setName}
-          />
+                {/* EMAIL */}
+                <View style={styles.input}>
+                    <Ionicons name="mail-outline" size={18} color="#94A3B8" />
+                    <TextInput
+                        placeholder="Email"
+                        placeholderTextColor="#94A3B8"
+                        style={styles.inputText}
+                        value={email}
+                        onChangeText={setEmail}
+                    />
+                </View>
+
+                {/* PASSWORD */}
+                <View style={styles.input}>
+                    <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" />
+                    <TextInput
+                        placeholder="Password"
+                        placeholderTextColor="#94A3B8"
+                        secureTextEntry
+                        style={styles.inputText}
+                        value={password}
+                        onChangeText={setPassword}
+                    />
+                </View>
+
+                {/* ERROR */}
+                {error !== '' && <Text style={styles.error}>{error}</Text>}
+
+                {/* REGISTER EMAIL */}
+                <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
+                    <Text style={styles.registerText}>
+                        {loading ? 'Creating Account...' : 'Create account'}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* LOGIN LINK */}
+                <TouchableOpacity onPress={() => router.push('/patient')}>
+                    <Text style={styles.loginLink}>
+                        Already have an account? <Text style={styles.loginBold}>Login</Text>
+                    </Text>
+                </TouchableOpacity>
+
+            </Animated.View>
+
+            {/* SECURITY */}
+            <View style={styles.securityBox}>
+                <Ionicons name="shield-checkmark" size={16} color="#38BDF8" />
+                <Text style={styles.securityText}>
+                    Your data is encrypted and secure
+                </Text>
+            </View>
+
         </View>
-        {/* SOCIAL SECURITY */}
-        <View style={styles.input}>
-        <Ionicons name="card-outline" size={18} color="#94A3B8" />
-        <TextInput
-         placeholder="Social Security Number"
-        placeholderTextColor="#94A3B8"
-        style={styles.inputText}
-         value={socialSecurity}
-        onChangeText={setSocialSecurity}
-        />
-        </View>
-
-        {/* EMAIL */}
-        <View style={styles.input}>
-          <Ionicons name="mail-outline" size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Email"
-            placeholderTextColor="#94A3B8"
-            style={styles.inputText}
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-
-        {/* PASSWORD */}
-        <View style={styles.input}>
-          <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#94A3B8"
-            secureTextEntry
-            style={styles.inputText}
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-
-        {/* ERROR */}
-        {error !== '' && <Text style={styles.error}>{error}</Text>}
-
-        {/* REGISTER EMAIL */}
-        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister}>
-          <Text style={styles.registerText}>Create account</Text>
-        </TouchableOpacity>
-
-        {/* OR */}
-        <Text style={styles.or}>OR</Text>
-
-        {/* GOOGLE */}
-        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle}>
-          <Ionicons name="logo-google" size={18} color="white" />
-          <Text style={styles.socialText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        {/* APPLE */}
-        <TouchableOpacity style={styles.appleBtn} onPress={handleApple}>
-          <Ionicons name="logo-apple" size={20} color="white" />
-          <Text style={styles.socialText}>Continue with Apple</Text>
-        </TouchableOpacity>
-
-        {/* LOGIN LINK */}
-        <TouchableOpacity onPress={() => router.push('/patient')}>
-          <Text style={styles.loginLink}>
-            Already have an account? <Text style={styles.loginBold}>Login</Text>
-          </Text>
-        </TouchableOpacity>
-
-      </Animated.View>
-
-      {/* SECURITY */}
-      <View style={styles.securityBox}>
-        <Ionicons name="shield-checkmark" size={16} color="#38BDF8" />
-        <Text style={styles.securityText}>
-          Your data is encrypted and secure
-        </Text>
-      </View>
-
-    </View>
-  );
+    );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0B1220',
-    padding: 20,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: '#0B1220',
+        padding: 20,
+    },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 55,
-  },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 55,
+    },
 
-  backBtn: {
-    marginRight: 12,
-  },
+    backBtn: {
+        marginRight: 12,
+    },
 
-  title: {
-    fontSize: 28,
-    color: 'white',
-    fontWeight: '700',
-  },
+    title: {
+        fontSize: 28,
+        color: 'white',
+        fontWeight: '700',
+    },
 
-  subtitle: {
-    color: '#94A3B8',
-    marginTop: 6,
-    marginBottom: 25,
-  },
+    subtitle: {
+        color: '#94A3B8',
+        marginTop: 6,
+        marginBottom: 25,
+    },
 
-  card: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 22,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
+    card: {
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderRadius: 22,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+    },
 
-  input: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    borderRadius: 14,
-    marginBottom: 15,
-  },
+    input: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        paddingHorizontal: 14,
+        paddingVertical: 16,
+        borderRadius: 14,
+        marginBottom: 15,
+    },
 
-  inputText: {
-    flex: 1,
-    color: 'white',
-    marginLeft: 10,
-  },
+    inputText: {
+        flex: 1,
+        color: 'white',
+        marginLeft: 10,
+    },
 
-  registerBtn: {
-    backgroundColor: '#3B82F6',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 10,
-  },
+    registerBtn: {
+        backgroundColor: '#3B82F6',
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        marginTop: 10,
+    },
 
-  registerText: {
-    color: 'white',
-    fontWeight: '600',
-  },
+    registerText: {
+        color: 'white',
+        fontWeight: '600',
+    },
 
-  or: {
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginVertical: 15,
-  },
+    loginLink: {
+        color: '#94A3B8',
+        textAlign: 'center',
+        marginTop: 18,
+        fontSize: 13,
+    },
 
-  googleBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#DB4437',
-    padding: 14,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
+    loginBold: {
+        color: '#38BDF8',
+        fontWeight: '700',
+    },
 
-  appleBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#000',
-    padding: 14,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
+    error: {
+        color: '#F87171',
+        marginBottom: 10,
+    },
 
-  socialText: {
-    color: 'white',
-    fontWeight: '600',
-  },
+    securityBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 22,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: 'rgba(56, 189, 248, 0.08)',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(56, 189, 248, 0.25)',
+    },
 
-  loginLink: {
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 18,
-    fontSize: 13,
-  },
-
-  loginBold: {
-    color: '#38BDF8',
-    fontWeight: '700',
-  },
-
-  error: {
-    color: '#F87171',
-    marginBottom: 10,
-  },
-
-  securityBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 22,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-
-  securityText: {
-    marginLeft: 8,
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '500',
-  },
+    securityText: {
+        marginLeft: 8,
+        color: '#94A3B8',
+        fontSize: 12,
+        fontWeight: '500',
+    },
 });

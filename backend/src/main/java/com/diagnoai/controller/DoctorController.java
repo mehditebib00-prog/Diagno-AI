@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 
 @RestController
@@ -26,7 +27,6 @@ public class DoctorController {
 
         Optional<Doctor> doctorOpt = doctorRepository.findByEmail(email);
 
-        // 💡 Validation simple avec le mot de passe en clair ou crypté (à adapter selon ton encodage)
         if (doctorOpt.isPresent() && doctorOpt.get().getPassword().equals(password)) {
             Doctor doctor = doctorOpt.get();
             return ResponseEntity.ok(Map.of(
@@ -42,7 +42,7 @@ public class DoctorController {
         return ResponseEntity.status(400).body(Map.of("message", "Invalid email or password"));
     }
 
-    // 💡 NOUVEL ENDPOINT : Récupérer le profil réel du médecin connecté
+    // 💡 ENDPOINT PROFIL MODIFIÉ : Ajout du champ profilePicture pour le mobile !
     @GetMapping("/profile")
     public ResponseEntity<?> getDoctorProfile(@RequestParam String email) {
         System.out.println("Récupération du profil pour : " + email);
@@ -50,16 +50,47 @@ public class DoctorController {
         Optional<Doctor> doctorOpt = doctorRepository.findByEmail(email);
         if (doctorOpt.isPresent()) {
             Doctor doctor = doctorOpt.get();
-            return ResponseEntity.ok(Map.of(
-                    "id", doctor.getId(),
-                    "name", doctor.getName(),
-                    "email", doctor.getEmail(),
-                    "specialization", doctor.getSpecialization() != null ? doctor.getSpecialization() : "Generalist",
-                    "hospital", "Hôpital Central", // Optionnel ou à ajouter plus tard dans ton modèle
-                    "phone", "+33 6 12 34 56 78"
-            ));
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", doctor.getId());
+            response.put("name", doctor.getName());
+            response.put("email", doctor.getEmail());
+            response.put("specialization", doctor.getSpecialization() != null ? doctor.getSpecialization() : "Generalist");
+            response.put("hospital", "Hôpital Central");
+            response.put("phone", "+33 6 12 34 56 78");
+            // On renvoie la photo si elle existe, sinon une chaîne vide
+            response.put("profilePicture", doctor.getProfilePicture() != null ? doctor.getProfilePicture() : "");
+
+            return ResponseEntity.ok(response);
         }
 
         return ResponseEntity.status(404).body(Map.of("message", "Doctor not found"));
+    }
+
+    // 🚀 NOUVEL ENDPOINT : Gère la mise à jour (PUT) demandée par le mobile pour enregistrer la photo !
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDoctor(@PathVariable Long id, @RequestBody Map<String, Object> doctorData) {
+        System.out.println("🚀 Requête PUT reçue pour modifier le docteur ID: " + id);
+
+        return doctorRepository.findById(id).map(doctor -> {
+            if (doctorData.containsKey("name")) {
+                doctor.setName((String) doctorData.get("name"));
+            }
+            if (doctorData.containsKey("specialization")) {
+                doctor.setSpecialization((String) doctorData.get("specialization"));
+            }
+
+            // Sécurité : On ne remplace la photo que si le mobile envoie du texte valide
+            if (doctorData.containsKey("profilePicture")) {
+                String photo = (String) doctorData.get("profilePicture");
+                if (photo != null && !photo.trim().isEmpty()) {
+                    System.out.println("💾 Sauvegarde de la photo du docteur en Base de données !");
+                    doctor.setProfilePicture(photo);
+                }
+            }
+
+            Doctor updatedDoctor = doctorRepository.save(doctor);
+            return ResponseEntity.ok(updatedDoctor);
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

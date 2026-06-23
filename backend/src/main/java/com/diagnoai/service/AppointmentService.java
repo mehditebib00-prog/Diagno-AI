@@ -38,17 +38,29 @@ public class AppointmentService {
     }
 
     public AppointmentDTO createAppointment(AppointmentDTO appointmentDTO) {
-        Optional<Patient> patient = patientRepository.findById(appointmentDTO.getPatientId());
-        if (patient.isPresent()) {
+        Optional<Patient> patientOpt = patientRepository.findById(appointmentDTO.getPatientId());
+        if (patientOpt.isPresent()) {
             Appointment appointment = convertToEntity(appointmentDTO);
-            appointment.setPatient(patient.get());
+            appointment.setPatient(patientOpt.get());
+
+            // 🚀 CORRECTION : On prend le nom du médecin envoyé par le mobile, pas le premier de la BDD !
+            appointment.setDoctorName(appointmentDTO.getDoctorName());
+
             if (appointment.getStatus() == null) {
-                appointment.setStatus("pending"); // ✅ Statut par défaut à la création
+                appointment.setStatus("PENDING");
             }
+
+            // Lier aussi le patient à ce médecin si ce n'est pas déjà fait
+            Patient patient = patientOpt.get();
+            if (patient.getDoctor() == null) {
+                // Optionnel : Tu peux chercher le Doctor par son nom ici si tu veux lier l'entité Doctor
+                // Pour l'instant, l'important est que la table "appointments" ait le bon doctorName !
+            }
+
             Appointment savedAppointment = appointmentRepository.save(appointment);
             return convertToDTO(savedAppointment);
         }
-        throw new RuntimeException("Patient not found");
+        throw new RuntimeException("Patient non trouvé");
     }
 
     public Optional<AppointmentDTO> updateAppointment(Long id, AppointmentDTO appointmentDTO) {
@@ -70,13 +82,17 @@ public class AppointmentService {
     }
 
     private AppointmentDTO convertToDTO(Appointment appointment) {
-        return new AppointmentDTO(
+        AppointmentDTO dto = new AppointmentDTO(
                 appointment.getId(),
                 appointment.getDate(),
                 appointment.getDoctorName(),
-                appointment.getStatus(), // ✅
+                appointment.getStatus(),
                 appointment.getPatient().getId()
         );
+        dto.setRejectionReason(appointment.getRejectionReason());
+        dto.setPatientName(appointment.getPatient().getName());
+
+        return dto;
     }
 
     private Appointment convertToEntity(AppointmentDTO appointmentDTO) {
@@ -90,7 +106,8 @@ public class AppointmentService {
 
 
     public List<AppointmentDTO> getAppointmentsByDoctorName(String doctorName) {
-        return appointmentRepository.findByDoctorName(doctorName).stream()
+        // 🚀 Utilise la version IgnoreCase pour éviter les bugs de majuscules/espaces !
+        return appointmentRepository.findByDoctorNameIgnoreCase(doctorName.trim()).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

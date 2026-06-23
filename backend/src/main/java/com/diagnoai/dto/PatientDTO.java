@@ -10,18 +10,20 @@ public class PatientDTO {
     private String password;
     private String socialSecurity;
     private String doctorName;
+    private String profilePicture;
 
     // Constructors
     public PatientDTO() {}
 
-    
 
-    public PatientDTO(Long id, String name, String email, String socialSecurity, String doctorName) {
+
+    public PatientDTO(Long id, String name, String email, String socialSecurity, String doctorName, String profilePicture) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.socialSecurity = socialSecurity;
         this.doctorName = doctorName;
+        this.profilePicture = profilePicture;
     }
 
     // Getters and Setters
@@ -42,4 +44,7 @@ public class PatientDTO {
 
     public String getDoctorName() { return doctorName; }
     public void setDoctorName(String doctorName) { this.doctorName = doctorName; }
+
+    public String getProfilePicture() { return profilePicture; }
+    public void setProfilePicture(String profilePicture) { this.profilePicture = profilePicture; }
 }

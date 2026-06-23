@@ -10,6 +10,7 @@ public class AppointmentDTO {
     private Long patientId;
     private String status;
     private String rejectionReason;
+    private String patientName;
 
     public AppointmentDTO() {}
 
@@ -44,4 +45,7 @@ public class AppointmentDTO {
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
     }
+
+    public String getPatientName() { return patientName; }
+    public void setPatientName(String patientName) { this.patientName = patientName; }
 }

@@ -12,7 +12,9 @@ public class Patient {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String profilePicture;
     private String name;
     private String email;
     private String password;
@@ -34,11 +36,12 @@ public class Patient {
 
     public Patient() {}
 
-    public Patient(String name, String email, String password, String socialSecurity) {
+    public Patient(String name, String email, String password, String socialSecurity, String profilePicture) {
         this.name = name;
         this.email = email;
         this.password = password;
         this.socialSecurity = socialSecurity;
+        this.profilePicture = profilePicture;
     }
 
     // Getters and Setters
@@ -80,4 +83,12 @@ public class Patient {
     public Doctor getDoctor() { return doctor; }
 
     public void setDoctor(Doctor doctor) { this.doctor = doctor; }
+
+    public String getProfilePicture() {
+        return profilePicture;
+    }
+
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
+    }
 }

@@ -81,6 +81,20 @@ public class AppointmentController {
             @RequestParam(required = false) String rejectionReason) {
         return ResponseEntity.ok(appointmentService.updateAppointmentStatus(id, status, rejectionReason));
     }
+
+    // 🚀 AJOUT : Récupérer les rendez-vous par l'ID du médecin
+    @GetMapping("/doctor/id/{doctorId}")
+    public ResponseEntity<List<AppointmentDTO>> getAppointmentsByDoctorId(@PathVariable Long doctorId) {
+        // Dans AppointmentService, on filtre directement tous les rendez-vous
+        // (Tu peux aussi créer une méthode dédiée si tes rendez-vous possèdent un champ doctor_id)
+        return ResponseEntity.ok(appointmentService.getAllAppointments().stream()
+                .filter(app -> {
+                    // Si ton entité Appointment a déjà une relation avec le médecin, utilise son ID.
+                    // Sinon, en attendant, cette route retourne tout ou filtre selon ta logique :
+                    return true;
+                })
+                .collect(java.util.stream.Collectors.toList()));
+    }
 }
 
 

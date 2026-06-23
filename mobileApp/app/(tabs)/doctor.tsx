@@ -52,8 +52,14 @@ export default function DoctorLogin() {
 
             console.log('Connexion Médecin réussie ! Data:', response.data);
 
-            // 💡 SAUVEGARDE de l'email pour s'en souvenir sur l'écran Mdashboard
-            await AsyncStorage.setItem('doctorEmail', email);
+            if (response.data) {
+                // 🚀 SAUVEGARDE SÉCURISÉE DES DONNÉES DU MÉDECIN CONNECTÉ
+                await AsyncStorage.setItem('userEmail', response.data.email);
+                await AsyncStorage.setItem('doctorEmail', response.data.email);
+                await AsyncStorage.setItem('doctorName', response.data.name); // Stocke le vrai nom (ex: "Dr. Martin")
+                await AsyncStorage.setItem('doctorId', response.data.id.toString()); // Stocke son ID unique
+                await AsyncStorage.setItem('userRole', 'DOCTOR'); // Verrouille le rôle
+            }
 
             setLoading(false);
 

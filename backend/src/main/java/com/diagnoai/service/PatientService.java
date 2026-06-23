@@ -63,11 +63,22 @@ public class PatientService {
     // UPDATE PATIENT
     public Optional<PatientDTO> updatePatient(Long id, PatientDTO patientDTO) {
         return patientRepository.findById(id).map(patient -> {
-
+            // On met à jour les champs textuels fondamentaux
             patient.setName(patientDTO.getName());
             patient.setEmail(patientDTO.getEmail());
+            patient.setSocialSecurity(patientDTO.getSocialSecurity());
 
-            if (patientDTO.getPassword() != null) {
+            // 🚀 SÉCURITÉ CRUCIAL : On ne remplace la photo que si le mobile envoie du texte !
+            // Si patientDTO.getProfilePicture() est null, on NE fait PAS de setProfilePicture(null),
+            // ainsi l'ancienne image stockée en BDD reste intacte et n'est pas effacée.
+            if (patientDTO.getProfilePicture() != null && !patientDTO.getProfilePicture().trim().isEmpty()) {
+                System.out.println("💾 Sauvegarde d'une nouvelle photo en Base de données !");
+                patient.setProfilePicture(patientDTO.getProfilePicture());
+            } else {
+                System.out.println("ℹ️ Conservation de la photo existante (le mobile a envoyé null ou vide).");
+            }
+
+            if (patientDTO.getPassword() != null && !patientDTO.getPassword().trim().isEmpty()) {
                 patient.setPassword(passwordEncoder.encode(patientDTO.getPassword()));
             }
 
@@ -105,7 +116,8 @@ public class PatientService {
                 patient.getName(),
                 patient.getEmail(),
                 patient.getSocialSecurity(),
-                patient.getDoctor() != null ? patient.getDoctor().getName() : null
+                patient.getDoctor() != null ? patient.getDoctor().getName() : null,
+                patient.getProfilePicture() // 🚀 AJOUTE CETTE LIGNE ICI
         );
     }
 
@@ -116,6 +128,7 @@ public class PatientService {
         patient.setName(dto.getName());
         patient.setEmail(dto.getEmail());
         patient.setSocialSecurity(dto.getSocialSecurity());
+        patient.setProfilePicture(dto.getProfilePicture()); // 🚀 AJOUTE CETTE LIGNE ICI
 
         if (dto.getPassword() != null) {
             patient.setPassword(dto.getPassword());

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Alert, ActivityIndicator } from 'react-native';
+import { Alert, ActivityIndicator, Modal } from 'react-native';
 import {
     View,
     Text,
@@ -19,15 +19,27 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../constants/api';
 
-// Fonction d'affichage du badge de statut (placée correctement ici en haut)
+// Badge de statut épuré et professionnel
 const getStatusBadge = (status: string) => {
     switch (status) {
         case 'ACCEPTED':
-            return <Text style={{ color: '#10B981', fontWeight: 'bold' }}>✅ Accepté</Text>;
+            return (
+                <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                    <Text style={[styles.badgeText, { color: '#34D399' }]}>Accepté</Text>
+                </View>
+            );
         case 'REFUSED':
-            return <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>❌ Refusé</Text>;
+            return (
+                <View style={[styles.badge, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                    <Text style={[styles.badgeText, { color: '#F87171' }]}>Refusé</Text>
+                </View>
+            );
         default:
-            return <Text style={{ color: '#F59E0B', fontWeight: 'bold' }}>⏳ En attente</Text>;
+            return (
+                <View style={[styles.badge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                    <Text style={[styles.badgeText, { color: '#FBBF24' }]}>En attente</Text>
+                </View>
+            );
     }
 };
 
@@ -44,7 +56,6 @@ interface Symptom {
     patientId: number;
 }
 
-// Interface pour typer proprement les rendez-vous
 interface Appointment {
     id: number;
     date: string;
@@ -61,28 +72,25 @@ export default function PatientDashboard() {
     const [photo, setPhoto] = useState<string | null>(null);
     const [editMode, setEditMode] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [refreshingAppointments, setRefreshingAppointments] = useState(false);
     const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
 
-    // Profil synchronisé avec la base de données
     const [profile, setProfile] = useState({
         id: '',
         fullName: '',
         residence: 'Paris, France',
-        phone: '+33 6 00 00 00 00',
+        phone: '+33 6 12 34 56 78',
         email: '',
         socialSecurity: '',
     });
 
-    // Listes de données réelles MySQL
     const [meds, setMeds] = useState<{ id: string; name: string; dosage: string }[]>([]);
     const [symptoms, setSymptoms] = useState<Symptom[]>([]);
-
-    // États pour la gestion de la fenêtre modale des symptômes (Ajout / Modification)
     const [showAddModal, setShowAddModal] = useState(false);
     const [symptomText, setSymptomText] = useState('');
     const [editingSymptomId, setEditingSymptomId] = useState<number | null>(null);
 
-    // Système d'animation pour la barre de navigation basse
     const animValues = useRef(
         tabs.reduce((acc, t) => {
             acc[t] = new Animated.Value(1);
@@ -91,53 +99,130 @@ export default function PatientDashboard() {
     ).current;
 
     const icons: Record<TabType, keyof typeof Ionicons.glyphMap> = {
-        home: 'home',
-        meds: 'medical',
-        symptoms: 'pulse',
-        account: 'person',
+        home: 'home-outline',
+        meds: 'medical-outline',
+        symptoms: 'pulse-outline',
+        account: 'person-outline',
     };
 
-    // Chargement initial des données de l'utilisateur connecté
+    const refreshAppointmentsOnly = async (idToFetch = profile.id) => {
+        if (!idToFetch) return;
+        try {
+            setRefreshingAppointments(true);
+            const appointmentsResponse = await axios.get(`${API_URL}/api/appointments/patient/${idToFetch}`);
+            setMyAppointments(appointmentsResponse.data);
+        } catch (error) {
+            console.error("Erreur lors de l'actualisation des rendez-vous :", error);
+            Alert.alert("Erreur", "Impossible de rafraîchir les rendez-vous.");
+        } finally {
+            setRefreshingAppointments(false);
+        }
+    };
+
+    const handleCancelAppointment = (id: number) => {
+        Alert.alert(
+            "Annuler le rendez-vous",
+            "Êtes-vous sûr de vouloir annuler et supprimer ce rendez-vous ?",
+            [
+                { text: "Retour", style: "cancel" },
+                {
+                    text: "Oui, annuler",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await axios.delete(`${API_URL}/api/appointments/${id}`);
+                            setMyAppointments(prev => prev.filter(appt => appt.id !== id));
+                            Alert.alert("Succès", "Le rendez-vous a bien été annulé.");
+                        } catch (error) {
+                            console.error("Erreur lors de l'annulation du rendez-vous:", error);
+                            Alert.alert("Erreur", "Impossible d'annuler le rendez-vous.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleUpdateProfile = async () => {
+        if (!profile.fullName.trim() || !profile.email.trim()) {
+            Alert.alert("Erreur", "Le nom et l'email ne peuvent pas être vides.");
+            return;
+        }
+
+        try {
+            setIsSavingProfile(true);
+
+            await axios.put(`${API_URL}/api/patients/${profile.id}`, {
+                id: parseInt(profile.id),
+                name: profile.fullName.trim(),
+                email: profile.email.trim(),
+                socialSecurity: profile.socialSecurity,
+                profilePicture: photo
+            });
+
+            await AsyncStorage.setItem('userEmail', profile.email.trim());
+            setEditMode(false);
+            Alert.alert("Succès", "Vos informations de compte ont été mises à jour ! ✨");
+        } catch (error) {
+            console.error("Erreur lors de la modification du compte :", error);
+            Alert.alert("Erreur", "Impossible d'enregistrer les modifications sur le serveur.");
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
+
     useEffect(() => {
         const fetchPatientData = async () => {
             try {
                 setLoading(true);
+                // 1. Lire la clé
                 const email = await AsyncStorage.getItem('userEmail');
+                console.log("➡️ [Dashboard] E-mail récupéré dans AsyncStorage :", email);
+
                 if (!email) {
+                    console.error("❌ Aucun e-mail trouvé sous la clé 'userEmail' ! Redirection...");
                     router.replace('/(tabs)/role');
                     return;
                 }
 
-                console.log("Patient - Recherche du compte pour :", email);
-                const response = await axios.get(`${API_URL}/api/patients/search?name=&id=`);
-                const found = response.data.find((p: any) => p.email === email);
+                // 2. Lancer la requête
+                const url = `${API_URL}/api/patients/profile?email=${encodeURIComponent(email.trim())}`;
+                console.log("📡 Envoi de la requête à :", url);
+
+                const response = await axios.get(url);
+                const found = response.data;
+                console.log("🍏 Réponse brute reçue du backend :", found);
 
                 if (found) {
                     setProfile({
                         id: found.id.toString(),
-                        fullName: found.name,
+                        fullName: found.name, // Fait bien le lien avec 'name' du DTO
                         residence: 'Paris, France',
                         phone: '+33 6 12 34 56 78',
                         email: found.email,
-                        socialSecurity: found.socialSecurity,
+                        socialSecurity: found.socialSecurity || 'Non renseigné',
                     });
 
-                    // 1. Récupération des médicaments associés
+                    if (found.profilePicture) {
+                        setPhoto(found.profilePicture);
+                    } else {
+                        setPhoto(null);
+                    }
+
+                    // Chargements secondaires
                     const medsResponse = await axios.get(`${API_URL}/api/medications/mobile/patient/${found.id}`);
                     setMeds(medsResponse.data);
 
-                    // 2. Récupération des symptômes associés
                     const symptomsResponse = await axios.get(`${API_URL}/api/symptoms/mobile/patient/${found.id}`);
                     setSymptoms(symptomsResponse.data);
 
-                    // 3. 🚀 AJOUT : Récupération des vrais rendez-vous du patient depuis l'API
                     const appointmentsResponse = await axios.get(`${API_URL}/api/appointments/patient/${found.id}`);
                     setMyAppointments(appointmentsResponse.data);
                 } else {
                     Alert.alert("Erreur", "Données du profil introuvables.");
                 }
-            } catch (error) {
-                console.error("Erreur de récupération globale patient :", error);
+            } catch (error: any) {
+                console.error("❌ Erreur de récupération globale patient :", error?.response?.data || error.message);
             } finally {
                 setLoading(false);
             }
@@ -149,7 +234,7 @@ export default function PatientDashboard() {
     const changeTab = (t: TabType) => {
         setTab(t);
         Animated.spring(animValues[t], {
-            toValue: 1.25,
+            toValue: 1.15,
             useNativeDriver: true,
             friction: 6,
         }).start(() => {
@@ -160,16 +245,37 @@ export default function PatientDashboard() {
     };
 
     const pickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 1,
-        });
-        if (!result.canceled) setPhoto(result.assets[0].uri);
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.4,
+                base64: true,
+            });
+
+            if (!result.canceled && result.assets[0].base64) {
+                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setPhoto(base64Image);
+
+                const response = await axios.put(`${API_URL}/api/patients/${profile.id}`, {
+                    id: parseInt(profile.id),
+                    name: profile.fullName ? profile.fullName.trim() : "Patient",
+                    email: profile.email ? profile.email.trim() : "",
+                    socialSecurity: profile.socialSecurity || "",
+                    profilePicture: base64Image
+                });
+
+                if (response.status === 200 || response.status === 204) {
+                    Alert.alert("Succès", "Photo de profil enregistrée ! 📸");
+                }
+            }
+        } catch (error: any) {
+            console.error("❌ ERREUR DANS PICKIMAGE :", error);
+            Alert.alert("Erreur", "Le serveur a refusé l'image.");
+        }
     };
 
-    // Enregistrer ou modifier un symptôme dans la base de données
     const handleSaveSymptom = async () => {
         if (!symptomText.trim()) {
             Alert.alert("Erreur", "Veuillez décrire votre symptôme.");
@@ -178,37 +284,31 @@ export default function PatientDashboard() {
 
         try {
             if (editingSymptomId) {
-                console.log("Modification du symptôme ID:", editingSymptomId);
                 const response = await axios.put(`${API_URL}/api/symptoms/${editingSymptomId}`, {
                     description: symptomText.trim(),
                     patientId: parseInt(profile.id),
                     date: new Date().toISOString()
                 });
-
                 setSymptoms(prev => prev.map(s => s.id === editingSymptomId ? response.data : s));
                 Alert.alert("Succès", "Votre symptôme a bien été modifié !");
             } else {
-                console.log("Ajout d'un nouveau symptôme");
                 const response = await axios.post(`${API_URL}/api/symptoms`, {
                     description: symptomText.trim(),
                     patientId: parseInt(profile.id),
                     date: new Date().toISOString()
                 });
-
                 setSymptoms(prev => [response.data, ...prev]);
                 Alert.alert("Succès", "Votre symptôme a bien été enregistré !");
             }
-
             setSymptomText('');
             setEditingSymptomId(null);
             setShowAddModal(false);
         } catch (error) {
             console.error("Erreur lors de la sauvegarde du symptôme :", error);
-            Alert.alert("Erreur", "Impossible d'enregistrer les données sur le serveur.");
+            Alert.alert("Erreur", "Impossible d'enregistrer les données.");
         }
     };
 
-    // Supprimer un symptôme de MySQL
     const deleteSymptom = async (id: number) => {
         try {
             await axios.delete(`${API_URL}/api/symptoms/${id}`);
@@ -220,7 +320,6 @@ export default function PatientDashboard() {
         }
     };
 
-    // Fonction utilitaire pour rendre la date lisible
     const formatDateTime = (isoString: string) => {
         try {
             const dateObj = new Date(isoString);
@@ -230,122 +329,108 @@ export default function PatientDashboard() {
         }
     };
 
-    if (loading) {
-        return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#38BDF8" />
-            </View>
-        );
-    }
-
-    /* ================= HOME ================= */
+    /* ================= Renders Panels ================= */
     const renderHome = () => (
-        <ScrollView style={{ padding: 20, paddingTop: 60 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-            <Text style={{ color: 'white', fontSize: 24, fontWeight: '700' }}>Hello 👋</Text>
-            <Text style={{ color: '#94A3B8', marginTop: 5 }}>Welcome back, {profile.fullName}</Text>
+        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+            <View style={styles.headerRow}>
+                <View>
+                    <Text style={styles.greetingText}>Hello</Text>
+                    <Text style={styles.subGreetingText}>{profile.fullName}</Text>
+                </View>
+                {photo && (
+                    <Image source={{ uri: photo }} style={styles.miniAvatar} />
+                )}
+            </View>
 
-            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <View style={styles.imageWrapper}>
                 <Image
                     source={require('../../assets/images/docteur.jpeg')}
-                    style={{ width: '100%', height: 200, borderRadius: 15 }}
+                    style={styles.heroImage}
                     resizeMode="cover"
                 />
             </View>
 
-            {/* 🗓️ BOUTON POUR REJOINDRE L'ÉCRAN DE PRISE DE RENDEZ-VOUS */}
-            <TouchableOpacity
-                style={{
-                    backgroundColor: '#38BDF8',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 16,
-                    borderRadius: 16,
-                    marginBottom: 20,
-                    gap: 10,
-                    elevation: 3,
-                    shadowColor: '#38BDF8',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 5
-                }}
-                onPress={() => router.push('/Appointment')}
-            >
-                <Ionicons name="calendar" size={22} color="white" />
-                <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>Prendre un Rendez-vous</Text>
+            <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/Appointment')}>
+                <Ionicons name="calendar" size={20} color="white" />
+                <Text style={styles.primaryButtonText}>Prendre un Rendez-vous</Text>
             </TouchableOpacity>
 
-            {/* 🚀 DEBUT DE LA SECTION : MES DEMANDES DE RENDEZ-VOUS */}
-            <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', marginBottom: 12, marginTop: 5 }}>
-                🗓️ Vos Demandes de Rendez-vous
-            </Text>
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>🗓️ Demandes de Rendez-vous</Text>
+                <TouchableOpacity
+                    onPress={() => refreshAppointmentsOnly()}
+                    style={styles.refreshButton}
+                    disabled={refreshingAppointments}
+                >
+                    {refreshingAppointments ? (
+                        <ActivityIndicator size="small" color="#0EA5E9" />
+                    ) : (
+                        <Ionicons name="refresh" size={16} color="#0EA5E9" />
+                    )}
+                </TouchableOpacity>
+            </View>
 
             <View style={{ marginBottom: 20 }}>
                 {myAppointments.length === 0 ? (
-                    <View style={[styles.card, { borderStyle: 'dashed' }]}>
-                        <Text style={{ color: '#64748B', fontStyle: 'italic', textAlign: 'center' }}>
+                    <View style={[styles.card, styles.emptyCard]}>
+                        <Text style={styles.emptyCardText}>
                             Aucun rendez-vous planifié pour le moment.
                         </Text>
                     </View>
                 ) : (
                     myAppointments.map((appt) => (
                         <View key={appt.id} style={styles.card}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
-                                    {appt.doctorName}
-                                </Text>
-                                {getStatusBadge(appt.status)}
+                            <View style={styles.cardRowHeader}>
+                                <Text style={styles.doctorNameText}>{appt.doctorName}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                    {getStatusBadge(appt.status)}
+                                    <TouchableOpacity onPress={() => handleCancelAppointment(appt.id)} style={styles.actionTrashIcon}>
+                                        <Ionicons name="trash-outline" size={18} color="#F87171" />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
-                            <Text style={{ color: '#94A3B8', fontSize: 13, marginTop: 5, flexDirection: 'row', alignItems: 'center' }}>
-                                <Ionicons name="time-outline" size={13} color="#38BDF8" /> {formatDateTime(appt.date)}
-                            </Text>
+                            <View style={styles.timeContainer}>
+                                <Ionicons name="time-outline" size={14} color="#0EA5E9" />
+                                <Text style={styles.timeText}>{formatDateTime(appt.date)}</Text>
+                            </View>
 
-                            {/* Affichage du message si le médecin refuse le rdv */}
                             {appt.status === 'REFUSED' && appt.rejectionReason && (
-                                <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: 10, borderRadius: 10, marginTop: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}>
-                                    <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700' }}>Motif du refus :</Text>
-                                    <Text style={{ color: '#E2E8F0', fontSize: 13, fontStyle: 'italic', marginTop: 2 }}>"{appt.rejectionReason}"</Text>
+                                <View style={styles.reasonContainer}>
+                                    <Text style={styles.reasonTitle}>Motif du refus :</Text>
+                                    <Text style={styles.reasonText}>{`"${appt.rejectionReason}"`}</Text>
                                 </View>
                             )}
                         </View>
                     ))
                 )}
             </View>
-            {/* 🚀 FIN DE LA SECTION RENDEZ-VOUS */}
 
             <View style={styles.card}>
                 <Text style={styles.cardTitle}>📊 Health Status Overview</Text>
-                <Text style={styles.cardText}>💊 Treatments active: {meds.length}{"\n"}🤒 Registered Symptoms: {symptoms.length}</Text>
-            </View>
-
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>💡 Medical Recommendation</Text>
-                <Text style={styles.cardText}>Remember to register any new symptom regularly to keep your doctor informed in real time.</Text>
+                <View style={styles.statsDivider} />
+                <Text style={styles.cardText}>💊 Active treatments : <Text style={styles.whiteHighlight}>{meds.length}</Text></Text>
+                <Text style={[styles.cardText, { marginTop: 4 }]}>🤒 Symptoms logged : <Text style={styles.whiteHighlight}>{symptoms.length}</Text></Text>
             </View>
         </ScrollView>
     );
 
-    /* ================= MEDS ================= */
     const renderMeds = () => (
-        <View style={styles.medsContainer}>
-            <Text style={styles.homeTitle}>📋 My Prescriptions</Text>
-            <Text style={styles.homeSub}>List of treatments prescribed by your doctor</Text>
-
+        <View style={styles.panelContainer}>
+            <Text style={styles.panelTitle}>📋 My Prescriptions</Text>
+            <Text style={styles.panelSub}>List of treatments prescribed by your doctor</Text>
             <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
                 {meds.length === 0 ? (
-                    <Text style={{ color: '#64748B', fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginTop: 20 }}>
-                        No treatment currently prescribed.
-                    </Text>
+                    <Text style={styles.emptyListText}>No treatment currently prescribed.</Text>
                 ) : (
                     meds.map((med) => (
-                        <View key={med.id} style={styles.cardRow}>
-                            <View style={styles.medIcon}>
-                                <Ionicons name="medical" size={20} color="#38BDF8" />
+                        <View key={med.id} style={styles.itemRowCard}>
+                            <View style={styles.medIconWrapper}>
+                                <Ionicons name="medical" size={18} color="#0EA5E9" />
                             </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                                <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{med.name}</Text>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>{med.dosage}</Text>
+                            <View style={{ flex: 1, marginLeft: 14 }}>
+                                <Text style={styles.itemMainName}>{med.name}</Text>
+                                <Text style={styles.itemSubDetail}>{med.dosage}</Text>
                             </View>
                         </View>
                     ))
@@ -354,136 +439,99 @@ export default function PatientDashboard() {
         </View>
     );
 
-    /* ================= SYMPTOMS ================= */
     const renderSymptoms = () => (
-        <View style={styles.medsContainer}>
-            <Text style={styles.homeTitle}>🤒 Track Symptoms</Text>
-            <Text style={styles.homeSub}>Declare or update your medical records</Text>
-
+        <View style={styles.panelContainer}>
+            <Text style={styles.panelTitle}>🤒 Track Symptoms</Text>
+            <Text style={styles.panelSub}>Declare or update your medical records</Text>
             <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
                 {symptoms.length === 0 ? (
-                    <Text style={{ color: '#64748B', fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginTop: 20 }}>
-                        No symptoms declared yet.
-                    </Text>
+                    <Text style={styles.emptyListText}>No symptoms declared yet.</Text>
                 ) : (
                     symptoms.map((s) => (
-                        <View key={s.id} style={styles.cardRow}>
-                            <View style={[styles.medIcon, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-                                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                        <View key={s.id} style={styles.itemRowCard}>
+                            <View style={[styles.medIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                                <Ionicons name="alert-circle" size={18} color="#F87171" />
                             </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                                <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>{s.description}</Text>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
+                            <View style={{ flex: 1, marginLeft: 14 }}>
+                                <Text style={styles.itemMainName}>{s.description}</Text>
+                                <Text style={styles.itemSubDetail}>
                                     {s.date ? `Declared: ${new Date(s.date).toLocaleDateString()}` : 'Recent'}
                                 </Text>
                             </View>
-
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setEditingSymptomId(s.id);
-                                    setSymptomText(s.description);
-                                    setShowAddModal(true);
-                                }}
-                                style={[styles.editSmallBtn, { marginRight: 8 }]}
-                            >
-                                <Ionicons name="create-outline" size={16} color="white" />
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={() => deleteSymptom(s.id)} style={styles.deleteBtn}>
-                                <Ionicons name="trash-outline" size={16} color="white" />
-                            </TouchableOpacity>
+                            <View style={styles.rowActionGroup}>
+                                <TouchableOpacity onPress={() => { setEditingSymptomId(s.id); setSymptomText(s.description); setShowAddModal(true); }} style={styles.smallActionBtn}>
+                                    <Ionicons name="create-outline" size={16} color="#0EA5E9" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => deleteSymptom(s.id)} style={[styles.smallActionBtn, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                                    <Ionicons name="trash-outline" size={16} color="#F87171" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     ))
                 )}
             </ScrollView>
-
-            {/* Bouton FAB d'Ajout */}
-            <View style={styles.fabAdd}>
-                <TouchableOpacity
-                    onPress={() => {
-                        setEditingSymptomId(null);
-                        setSymptomText('');
-                        setShowAddModal(true);
-                    }}
-                    style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
-                >
-                    <Ionicons name="add" size={28} color="white" />
-                </TouchableOpacity>
-            </View>
-
-            {/* Fenêtre Modale d'Ajout / Édition */}
-            {showAddModal && (
-                <View style={styles.modal}>
-                    <View style={styles.formCard}>
-                        <Text style={styles.formTitle}>
-                            {editingSymptomId ? '✏️ Update Symptom' : '➕ Declare Symptom'}
-                        </Text>
-
-                        <TextInput
-                            placeholder="Describe what you feel (e.g. Sharp headache, High fever...)"
-                            placeholderTextColor="#94A3B8"
-                            value={symptomText}
-                            onChangeText={setSymptomText}
-                            style={[styles.formInput, { height: 100, textAlignVertical: 'top' }]}
-                            multiline={true}
-                        />
-
-                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setShowAddModal(false);
-                                    setEditingSymptomId(null);
-                                    setSymptomText('');
-                                }}
-                                style={styles.cancelBtn}
-                            >
-                                <Text style={{ color: 'white', fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleSaveSymptom} style={styles.saveBtn}>
-                                <Text style={{ color: 'white', fontWeight: '600' }}>
-                                    {editingSymptomId ? 'Save' : 'Add'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            )}
+            <TouchableOpacity style={styles.fabAdd} onPress={() => { setEditingSymptomId(null); setSymptomText(''); setShowAddModal(true); }}>
+                <Ionicons name="add" size={26} color="white" />
+            </TouchableOpacity>
         </View>
     );
 
-    /* ================= ACCOUNT ================= */
     const renderAccount = () => (
-        <ScrollView style={{ flex: 1, paddingTop: 60, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-            <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center', marginVertical: 25 }}>
-                <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: '#38BDF8', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-                    {photo ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} /> : <Ionicons name="camera" size={28} color="#0B1220" />}
-                </View>
-                <Text style={{ color: '#38BDF8', marginTop: 10, fontWeight: '600', fontSize: 13 }}>Tap to change photo</Text>
-            </TouchableOpacity>
-
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>👤 Full Name</Text>
-                {editMode ? <TextInput value={profile.fullName} onChangeText={(t) => setProfile({ ...profile, fullName: t })} style={styles.input} /> : <Text style={styles.cardText}>{profile.fullName}</Text>}
-            </View>
-
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>🧾 Social Security Number</Text>
-                <Text style={styles.cardText}>{profile.socialSecurity}</Text>
-            </View>
-
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>📧 Email Account</Text>
-                <Text style={styles.cardText}>{profile.email}</Text>
+        <ScrollView style={styles.panelContainer} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+                    {photo ? (
+                        <Image source={{ uri: photo }} style={styles.avatarImage} />
+                    ) : (
+                        <Ionicons name="camera-outline" size={32} color="#0EA5E9" />
+                    )}
+                </TouchableOpacity>
+                <Text style={styles.avatarChangeText}>Tap to change avatar</Text>
             </View>
 
             <TouchableOpacity
-                style={{ backgroundColor: '#EF4444', padding: 14, borderRadius: 16, alignItems: 'center', marginTop: 20 }}
-                onPress={async () => {
-                    await AsyncStorage.removeItem('userEmail');
-                    router.replace('/(tabs)/role');
-                }}
+                style={[styles.toggleEditBtn, editMode ? styles.btnEditing : styles.btnNormal]}
+                onPress={() => editMode ? handleUpdateProfile() : setEditMode(true)}
+                disabled={isSavingProfile}
             >
-                <Text style={{ color: 'white', fontWeight: '700' }}>Log Out</Text>
+                {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#0EA5E9" />
+                ) : (
+                    <>
+                        <Ionicons name={editMode ? "checkmark-circle-outline" : "create-outline"} size={18} color={editMode ? "#10B981" : "#0EA5E9"} />
+                        <Text style={[styles.toggleEditBtnText, { color: editMode ? '#10B981' : '#0EA5E9' }]}>
+                            {editMode ? "Save Changes" : "Edit Account Info"}
+                        </Text>
+                    </>
+                )}
+            </TouchableOpacity>
+
+            <View style={styles.card}>
+                <Text style={styles.accountCardLabel}>👤 Full Name</Text>
+                {editMode ? (
+                    <TextInput value={profile.fullName} onChangeText={(t) => setProfile({ ...profile, fullName: t })} style={styles.input} placeholderTextColor="#64748B" />
+                ) : (
+                    <Text style={styles.accountCardValue}>{profile.fullName}</Text>
+                )}
+            </View>
+
+            <View style={styles.card}>
+                <Text style={styles.accountCardLabel}>📧 Email Account</Text>
+                {editMode ? (
+                    <TextInput value={profile.email} onChangeText={(t) => setProfile({ ...profile, email: t })} style={styles.input} keyboardType="email-address" autoCapitalize="none" placeholderTextColor="#64748B" />
+                ) : (
+                    <Text style={styles.accountCardValue}>{profile.email}</Text>
+                )}
+            </View>
+
+            <View style={styles.card}>
+                <Text style={styles.accountCardLabel}>🧾 Social Security Number</Text>
+                <Text style={styles.accountCardValue}>{profile.socialSecurity}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userEmail'); router.replace('/(tabs)/role'); }}>
+                <Ionicons name="log-out-outline" size={18} color="white" style={{ marginRight: 6 }} />
+                <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
         </ScrollView>
     );
@@ -495,19 +543,44 @@ export default function PatientDashboard() {
             {tab === 'symptoms' && renderSymptoms()}
             {tab === 'account' && renderAccount()}
 
-            {/* Navigation basse */}
+            {/* Modale d'ajout/modification de symptômes au design épuré */}
+            <Modal transparent visible={showAddModal} animationType="fade" onRequestClose={() => setShowAddModal(false)}>
+                <View style={styles.modalOverlay}>
+                    <BlurView intensity={40} style={StyleSheet.absoluteFill} tint="dark" />
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>{editingSymptomId ? 'Modifier le symptôme' : 'Déclarer un symptôme'}</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            multiline
+                            numberOfLines={4}
+                            value={symptomText}
+                            onChangeText={setSymptomText}
+                            placeholder="Décrivez précisément ce que vous ressentez..."
+                            placeholderTextColor="#475569"
+                        />
+                        <View style={styles.modalActionRow}>
+                            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={() => setShowAddModal(false)}>
+                                <Text style={styles.modalBtnCancelText}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={handleSaveSymptom}>
+                                <Text style={styles.modalBtnSaveText}>Confirmer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Navigation Bar premium et floutée */}
             <View style={styles.navWrapper}>
-                <BlurView intensity={30} style={styles.blurContainer}>
+                <BlurView intensity={35} style={styles.blurContainer} tint="dark">
                     {tabs.map((t) => {
                         const isActive = tab === t;
                         return (
-                            <TouchableOpacity key={t} onPress={() => changeTab(t)} style={styles.tab} activeOpacity={0.7}>
-                                <Animated.View style={{ transform: [{ scale: animValues[t] }] }}>
-                                    <Ionicons name={icons[t]} size={22} color={isActive ? '#38BDF8' : '#94A3B8'} />
+                            <TouchableOpacity key={t} onPress={() => changeTab(t)} style={styles.tab} activeOpacity={0.8}>
+                                <Animated.View style={[{ transform: [{ scale: animValues[t] }] }, styles.tabIconAlign]}>
+                                    <Ionicons name={isActive ? (icons[t].replace('-outline', '') as any) : icons[t]} size={20} color={isActive ? '#0EA5E9' : '#64748B'} />
+                                    <Text style={[styles.label, isActive && styles.active]}>{t.charAt(0).toUpperCase() + t.slice(1)}</Text>
                                 </Animated.View>
-                                <Text style={[styles.label, isActive && styles.active]}>
-                                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                                </Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -518,28 +591,97 @@ export default function PatientDashboard() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0B1220' },
-    card: { backgroundColor: 'rgba(255,255,255,0.03)', padding: 18, borderRadius: 20, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-    cardTitle: { color: 'white', fontSize: 16, fontWeight: '700', marginBottom: 8 },
-    cardText: { color: '#94A3B8', fontSize: 14, lineHeight: 22 },
-    input: { backgroundColor: '#0F172A', color: 'white', padding: 12, borderRadius: 12, marginTop: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    homeTitle: { color: 'white', fontSize: 24, fontWeight: '700' },
-    homeSub: { color: '#94A3B8', fontSize: 13, marginTop: 4, marginBottom: 25 },
-    cardRow: { backgroundColor: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 18, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    medsContainer: { flex: 1, paddingTop: 60, paddingHorizontal: 20 },
-    medIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(56,189,248,0.15)', justifyContent: 'center', alignItems: 'center' },
-    editSmallBtn: { backgroundColor: '#38BDF8', padding: 10, borderRadius: 10 },
-    deleteBtn: { backgroundColor: '#EF4444', padding: 10, borderRadius: 10 },
-    fabAdd: { position: 'absolute', bottom: 110, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#38BDF8', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-    modal: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 99 },
-    formCard: { width: isTabletOrDesktop ? 400 : '85%', backgroundColor: '#0F172A', padding: 20, borderRadius: 20 },
-    formTitle: { color: 'white', fontSize: 18, fontWeight: '700', marginBottom: 15 },
-    formInput: { backgroundColor: '#0B1220', color: 'white', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    cancelBtn: { flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 10, alignItems: 'center' },
-    saveBtn: { flex: 1, backgroundColor: '#38BDF8', padding: 12, borderRadius: 10, alignItems: 'center' },
-    navWrapper: { position: 'absolute', bottom: 30, left: 0, right: 0, alignItems: 'center' },
-    blurContainer: { flexDirection: 'row', width: isTabletOrDesktop ? 500 : '92%', borderRadius: 38, paddingVertical: 16, justifyContent: 'space-around', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
-    tab: { alignItems: 'center', flex: 1 },
-    label: { fontSize: 10, color: '#94A3B8', marginTop: 4 },
-    active: { color: '#38BDF8', fontWeight: '700' },
+    container: { flex: 1, backgroundColor: '#090D16' },
+    scrollContainer: { paddingHorizontal: 22, paddingTop: 60 },
+    panelContainer: { flex: 1, paddingTop: 60, paddingHorizontal: 22 },
+
+    // Header & Greeting
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    greetingText: { color: '#64748B', fontSize: 14, fontWeight: '500', letterSpacing: 0.5 },
+    subGreetingText: { color: '#FFFFFF', fontSize: 24, fontWeight: '700', marginTop: 2 },
+    miniAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(14, 165, 233, 0.3)' },
+
+    // Hero Section
+    imageWrapper: { width: '100%', height: 180, borderRadius: 24, overflow: 'hidden', marginVertical: 10, backgroundColor: '#131C2E' },
+    heroImage: { width: '100%', height: '100%', opacity: 0.85 },
+
+    // Cards Glassmorphism
+    card: { backgroundColor: 'rgba(30, 41, 59, 0.4)', padding: 20, borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
+    cardTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600', letterSpacing: 0.3 },
+    cardText: { color: '#94A3B8', fontSize: 13, lineHeight: 20 },
+    whiteHighlight: { color: '#FFFFFF', fontWeight: '600' },
+    statsDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginVertical: 12 },
+    emptyCard: { borderStyle: 'dashed', borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.2)', backgroundColor: 'transparent', padding: 25 },
+    emptyCardText: { color: '#475569', fontStyle: 'italic', textAlign: 'center', fontSize: 13 },
+
+    // List views
+    panelTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '700' },
+    panelSub: { color: '#64748B', fontSize: 13, marginTop: 4, marginBottom: 25 },
+    emptyListText: { color: '#475569', fontStyle: 'italic', textAlign: 'center', marginTop: 40, fontSize: 14 },
+
+    // Rows (Meds/Symptoms)
+    itemRowCard: { backgroundColor: 'rgba(30, 41, 59, 0.4)', padding: 16, borderRadius: 20, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
+    medIconWrapper: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(14, 165, 233, 0.1)', justifyContent: 'center', alignItems: 'center' },
+    itemMainName: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+    itemSubDetail: { color: '#64748B', fontSize: 12, marginTop: 3 },
+    rowActionGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    smallActionBtn: { backgroundColor: 'rgba(14,165,233,0.1)', padding: 8, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+
+    // Appointment specifics
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, marginTop: 10 },
+    sectionTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+    refreshButton: { padding: 8, backgroundColor: 'rgba(30, 41, 59, 0.6)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
+    cardRowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    doctorNameText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
+    timeContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+    timeText: { color: '#64748B', fontSize: 12 },
+    actionTrashIcon: { padding: 4 },
+
+    // Badges
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    badgeText: { fontSize: 11, fontWeight: '600' },
+    reasonContainer: { backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: 12, borderRadius: 14, marginTop: 12, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.12)', borderLeftWidth: 3, borderLeftColor: '#F87171' },
+    reasonTitle: { color: '#F87171', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    reasonText: { color: '#CBD5E1', fontSize: 12, fontStyle: 'italic', marginTop: 3 },
+
+    // Account details
+    avatarContainer: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(14, 165, 233, 0.08)', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(14, 165, 233, 0.2)' },
+    avatarImage: { width: '100%', height: '100%' },
+    avatarChangeText: { color: '#0EA5E9', marginTop: 10, fontWeight: '500', fontSize: 12, letterSpacing: 0.2 },
+    accountCardLabel: { color: '#64748B', fontSize: 12, fontWeight: '500', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+    accountCardValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
+    input: { backgroundColor: '#090D16', color: '#FFFFFF', padding: 12, borderRadius: 14, marginTop: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', fontSize: 14 },
+
+    // Buttons UI
+    primaryButton: { backgroundColor: '#0EA5E9', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 18, marginBottom: 25, gap: 10 },
+    primaryButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
+    toggleEditBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 16, marginBottom: 24, borderWidth: 1, gap: 8 },
+    btnNormal: { backgroundColor: 'rgba(14, 165, 233, 0.08)', borderColor: 'rgba(14, 165, 233, 0.2)' },
+    btnEditing: { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)' },
+    toggleEditBtnText: { fontWeight: '600', fontSize: 13 },
+    logoutBtn: { backgroundColor: '#EF4444', padding: 14, borderRadius: 18, alignItems: 'center', marginTop: 15, flexDirection: 'row', justifyContent: 'center' },
+    logoutText: { color: 'white', fontWeight: '600', fontSize: 14 },
+
+    // Floating Action Button
+    fabAdd: { position: 'absolute', bottom: 115, right: 22, width: 54, height: 54, borderRadius: 27, backgroundColor: '#0EA5E9', justifyContent: 'center', alignItems: 'center', zIndex: 10, elevation: 4, shadowColor: '#0EA5E9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+
+    // Navigation bar glassmorphism
+    navWrapper: { position: 'absolute', bottom: 26, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 16 },
+    blurContainer: { flexDirection: 'row', width: isTabletOrDesktop ? 480 : '100%', borderRadius: 32, paddingVertical: 12, justifyContent: 'space-around', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 12 },
+    tab: { alignItems: 'center', flex: 1, paddingVertical: 4 },
+    tabIconAlign: { alignItems: 'center', justifyContent: 'center' },
+    label: { fontSize: 10, color: '#64748B', marginTop: 4, fontWeight: '500' },
+    active: { color: '#0EA5E9', fontWeight: '600' },
+
+    // Custom Modal styling
+    modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalContent: { width: '100%', maxWidth: 400, backgroundColor: '#111827', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', elevation: 5 },
+    modalTitle: { color: 'white', fontSize: 18, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
+    modalInput: { backgroundColor: '#090D16', color: 'white', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', textAlignVertical: 'top', fontSize: 14, marginBottom: 20 },
+    modalActionRow: { flexDirection: 'row', gap: 12 },
+    modalBtn: { flex: 1, padding: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    modalBtnCancel: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    modalBtnCancelText: { color: '#94A3B8', fontWeight: '600', fontSize: 14 },
+    modalBtnSave: { backgroundColor: '#0EA5E9' },
+    modalBtnSaveText: { color: 'white', fontWeight: '600', fontSize: 14 }
 });
